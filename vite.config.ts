@@ -25,7 +25,15 @@ export default defineConfig({
     proxy: {
       [API_PATH_PREFIX]: {
         target: API_ORIGIN,
-        changeOrigin: true
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const auth = req.headers.authorization
+            if (auth) {
+              proxyReq.setHeader('Authorization', auth)
+            }
+          })
+        }
       }
     }
   }

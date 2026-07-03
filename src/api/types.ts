@@ -105,6 +105,7 @@ export interface MerchantItem {
   id: string
   platformMerchantId?: string
   name: string
+  description?: string
   category?: string
   commissionRate?: number
   pointExchangeRate?: number
@@ -115,6 +116,8 @@ export interface MerchantItem {
   coinRebateEnabled?: boolean
   merchantLevel?: string
   businessHours?: string
+  contactPhone?: string
+  address?: string
   deliveryFee?: string | number
   freeDeliveryThreshold?: string | number
 }

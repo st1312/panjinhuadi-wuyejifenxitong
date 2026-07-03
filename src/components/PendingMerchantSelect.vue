@@ -15,9 +15,9 @@
     <div v-if="open" class="dropdown">
       <div v-if="loading" class="dropdownItem muted">加载中...</div>
       <div v-else-if="loadError" class="dropdownItem error">{{ loadError }}</div>
-      <div v-else-if="!filteredMerchants.length" class="dropdownItem muted">暂无待审核商家</div>
+      <div v-else-if="!merchants.length" class="dropdownItem muted">暂无待审核商家</div>
       <button
-        v-for="merchant in filteredMerchants"
+        v-for="merchant in merchants"
         :key="merchant.id"
         type="button"
         class="dropdownItem"
@@ -25,14 +25,14 @@
         @mousedown.prevent="select(merchant)"
       >
         <span class="name">{{ merchant.name }}</span>
-        <span class="meta">{{ merchant.category || '未分类' }} · 待审核</span>
+        <span class="meta">{{ formatMeta(merchant) }}</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import IconSvg from './IconSvg.vue'
 import { merchantApi } from '../api/services'
 import type { MerchantItem } from '../api/types'
@@ -54,20 +54,27 @@ const loading = ref(false)
 const loadError = ref('')
 const merchants = ref<MerchantItem[]>([])
 
-const filteredMerchants = computed(() => {
-  const q = keyword.value.trim().toLowerCase()
-  if (!q) return merchants.value
-  return merchants.value.filter(merchant => {
-    const text = [merchant.name, merchant.category].filter(Boolean).join(' ').toLowerCase()
-    return text.includes(q)
-  })
-})
+let debounceTimer: ReturnType<typeof setTimeout>
+
+function formatMeta(merchant: MerchantItem) {
+  const parts = [merchant.category || '未分类', '待审核']
+  if (merchant.address) parts.push(merchant.address)
+  return parts.join(' · ')
+}
+
+function formatLabel(merchant: MerchantItem) {
+  return `${merchant.name} · ${merchant.category || '未分类'}`
+}
 
 async function fetchMerchants() {
   loading.value = true
   loadError.value = ''
   try {
-    const result = await merchantApi.listPending({ page: 1, pageSize: 50 })
+    const result = await merchantApi.listPending({
+      page: 1,
+      pageSize: 20,
+      keyword: keyword.value.trim() || undefined
+    })
     merchants.value = result.list || []
   } catch (e) {
     loadError.value = e instanceof ApiError ? e.message : '加载失败'
@@ -79,18 +86,20 @@ async function fetchMerchants() {
 
 function onFocus() {
   open.value = true
-  if (!merchants.value.length) fetchMerchants()
+  fetchMerchants()
 }
 
 function onInput() {
   open.value = true
   emit('update:modelValue', '')
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(fetchMerchants, 300)
 }
 
 function select(merchant: MerchantItem) {
   emit('update:modelValue', merchant.id)
   emit('select', merchant)
-  keyword.value = merchant.name
+  keyword.value = formatLabel(merchant)
   open.value = false
 }
 
@@ -105,7 +114,10 @@ watch(() => props.modelValue, (id) => {
 })
 
 onMounted(() => document.addEventListener('click', onClickOutside))
-onUnmounted(() => document.removeEventListener('click', onClickOutside))
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutside)
+  clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>

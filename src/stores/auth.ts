@@ -21,14 +21,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   configureRequest({
     getTokens: () => ({
-      accessToken: accessToken.value,
-      refreshToken: refreshToken.value
+      accessToken: accessToken.value || localStorage.getItem(ACCESS_KEY) || '',
+      refreshToken: refreshToken.value || localStorage.getItem(REFRESH_KEY) || ''
     }),
-    getPropertyCompanyId: () => propertyCompanyId.value,
+    getPropertyCompanyId: () => propertyCompanyId.value || readCompanyId(),
     refreshTokens: async () => {
-      if (!refreshToken.value) return false
+      const token = refreshToken.value || localStorage.getItem(REFRESH_KEY) || ''
+      if (!token) return false
       try {
-        const data = await authApi.refreshToken(refreshToken.value)
+        const data = await authApi.refreshToken(token)
         setSession(data.accessToken, data.refreshToken, profile.value, propertyCompanyId.value, true)
         return true
       } catch {
@@ -37,6 +38,9 @@ export const useAuthStore = defineStore('auth', () => {
     },
     onUnauthorized: () => {
       logout()
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login')
+      }
     }
   })
 

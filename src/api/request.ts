@@ -36,7 +36,7 @@ export function configureRequest(options: {
 }
 
 function withCompanyQuery(path: string) {
-  if (!path.startsWith('/admin/') && !path.startsWith('/reports/') && !path.startsWith('/residents')) return path
+  if (!path.startsWith('/admin/') && !path.startsWith('/reports/') && !path.startsWith('/residents') && !path.startsWith('/merchants')) return path
 
   const companyId = getPropertyCompanyId()
   if (!companyId) return path
@@ -87,9 +87,10 @@ export async function request<T>(
 
   if (auth) {
     const { accessToken } = getTokens()
-    if (accessToken) {
-      headers.set('Authorization', `Bearer ${accessToken}`)
+    if (!accessToken) {
+      throw new ApiError(20001, '登录已过期，请重新登录')
     }
+    headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
   const res = await fetch(`${API_BASE_URL}${withCompanyQuery(path)}`, {

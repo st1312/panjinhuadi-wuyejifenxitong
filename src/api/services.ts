@@ -145,7 +145,7 @@ export const merchantApi = {
   listPending(params: Record<string, string | number | undefined> = {}) {
 
     return request<PageResult<MerchantItem>>(
-      `/admin/merchants${buildQuery({ auditStatus: 'pending_audit', ...params })}`
+      `/merchants${buildQuery({ auditStatus: 'pending_audit', ...params })}`
     )
 
   },

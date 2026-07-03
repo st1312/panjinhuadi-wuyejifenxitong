@@ -273,6 +273,7 @@ import { dashboardApi, merchantApi, operationLogApi, residentApi } from '../api/
 import type { MerchantAuditPayload, MerchantItem } from '../api/types'
 import { mapCollectionRate, mapConsumptionData, mapDashboardStats, mapOperationLogs } from '../api/mappers'
 import { ApiError } from '../api/request'
+import { useAuthStore } from '../stores/auth'
 
 const loading = ref(true)
 const stats = ref<ReturnType<typeof mapDashboardStats>>([])
@@ -423,6 +424,12 @@ function onMerchantSelect(merchant: MerchantItem) {
 }
 
 async function submitAuditModal() {
+  const auth = useAuthStore()
+  if (!auth.accessToken && !localStorage.getItem('accessToken')) {
+    auditError.value = '登录已过期，请重新登录'
+    return
+  }
+
   const merchantId = auditForm.value.merchantId.trim()
   if (!merchantId) {
     auditError.value = '请选择商家'
