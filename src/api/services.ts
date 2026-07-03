@@ -95,6 +95,7 @@ export const residentApi = {
     building?: string
     status?: string
     role?: string
+    userType?: string
     propertyCompanyId?: string
     sort?: string
   } = {}) {

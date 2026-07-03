@@ -62,6 +62,22 @@ export const USER_ROLE = {
   COURIER: 'courier'
 } as const
 
+export const RESIDENT_USER_TYPE = {
+  OWNER: 'owner',
+  TENANT: 'tenant'
+} as const
+
+export const RESIDENT_USER_TYPE_LABEL: Record<string, string> = {
+  owner: '业主',
+  tenant: '租住人员'
+}
+
+export const RESIDENT_USER_TYPE_OPTIONS = [
+  { value: '', label: '全部身份' },
+  { value: RESIDENT_USER_TYPE.OWNER, label: '业主' },
+  { value: RESIDENT_USER_TYPE.TENANT, label: '租住人员' }
+]
+
 export const ORDER_STATUS_LABEL: Record<string, string> = {
   pending: '待支付',
   paid: '已支付',

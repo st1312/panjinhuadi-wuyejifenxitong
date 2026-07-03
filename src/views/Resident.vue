@@ -9,20 +9,27 @@
         <SegmentedControl :tabs="statusTabs" v-model="activeStatus" />
       </div>
       <div class="toolbar">
-        <div class="search">
+        <form class="search" @submit.prevent="submitSearch">
           <IconSvg name="search" />
-          <input type="text" placeholder="搜索姓名、电话、房号..." />
-        </div>
+          <input
+            v-model="searchKeyword"
+            type="search"
+            placeholder="搜索姓名、手机号..."
+            @input="onSearchInput"
+          />
+        </form>
         <div class="filters">
-          <div class="select">
-            <span>全部楼栋</span>
-            <IconSvg name="chevronDown" />
-          </div>
-          <div class="select">
-            <IconSvg name="person" />
-            <span>身份筛选</span>
-            <IconSvg name="chevronDown" />
-          </div>
+          <select v-model="selectedBuilding" class="select" @change="applyFilters">
+            <option value="">全部楼栋</option>
+            <option v-for="building in buildingOptions" :key="building" :value="building">
+              {{ building }}
+            </option>
+          </select>
+          <select v-model="selectedUserType" class="select" @change="applyFilters">
+            <option v-for="opt in RESIDENT_USER_TYPE_OPTIONS" :key="opt.value || 'all'" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
         </div>
       </div>
       <div class="table">
@@ -39,10 +46,12 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
+              <td colspan="6" class="emptyCell">加载中...</td>
             </tr>
-            <template v-else>
-            <tr v-for="resident in residents" :key="resident.id">
+            <tr v-else-if="!residents.length">
+              <td colspan="6" class="emptyCell">暂无住户数据</td>
+            </tr>
+            <tr v-for="resident in residents" v-else :key="resident.id">
               <td>
                 <div class="info">
                   <div class="avatar" :style="{ background: resident.avatarColor }">{{ resident.initials }}</div>
@@ -65,17 +74,16 @@
                 </div>
               </td>
             </tr>
-            </template>
           </tbody>
         </table>
         <div class="footer">
-          <span class="total">显示 1 到 {{ residents.length }} 共 {{ residentTotal }} 条待审核记录</span>
-          <div class="pagination">
-            <button class="pageBtn" disabled>&lt;</button>
-            <button class="pageBtn active">1</button>
-            <button class="pageBtn">2</button>
-            <button class="pageBtn">3</button>
-            <button class="pageBtn">&gt;</button>
+          <span class="total">
+            显示 {{ pageStart }} 到 {{ pageEnd }}，共 {{ residentTotal }} 条记录
+          </span>
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="pageBtn" :disabled="currentPage <= 1 || loading" @click="changePage(currentPage - 1)">&lt;</button>
+            <span class="pageInfo">{{ currentPage }} / {{ totalPages }}</span>
+            <button class="pageBtn" :disabled="currentPage >= totalPages || loading" @click="changePage(currentPage + 1)">&gt;</button>
           </div>
         </div>
       </div>
@@ -110,16 +118,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
 import { dashboardApi, residentApi } from '../api/services'
+import type { ResidentItem } from '../api/types'
 import { formatPercent, mapResidents } from '../api/mappers'
+import { RESIDENT_USER_TYPE_OPTIONS } from '../constants/enums'
+
+const PAGE_SIZE = 20
 
 const loading = ref(true)
+const searchKeyword = ref('')
+const appliedKeyword = ref('')
+const selectedBuilding = ref('')
+const selectedUserType = ref('')
+const buildingOptions = ref<string[]>([])
 const residents = ref<ReturnType<typeof mapResidents>>([])
 const residentTotal = ref(0)
+const currentPage = ref(1)
+const totalPages = ref(1)
 const residentBottomStats = ref({
   newToday: 0,
   newTrend: '0%',
@@ -127,25 +146,104 @@ const residentBottomStats = ref({
   occupancyRate: '—'
 })
 
-const statusTabs = computed(() => {
-  const total = residentTotal.value
-  const pending = residents.value.length
-  return [
-    { code: 'pending', name: '待审核', count: pending },
-    { code: 'approved', name: '已通过', count: Math.max(total - pending, 0) },
-    { code: 'rejected', name: '已拒绝', count: 0 }
-  ]
+let searchTimer: ReturnType<typeof setTimeout>
+
+const statusTabs = [
+  { code: 'all', name: '全部' },
+  { code: 'active', name: '正常' },
+  { code: 'frozen', name: '已冻结' },
+  { code: 'disabled', name: '已禁用' }
+]
+const activeStatus = ref('all')
+
+const pageStart = computed(() => {
+  if (!residentTotal.value) return 0
+  return (currentPage.value - 1) * PAGE_SIZE + 1
 })
-const activeStatus = ref('pending')
+
+const pageEnd = computed(() => {
+  if (!residentTotal.value) return 0
+  return Math.min(currentPage.value * PAGE_SIZE, residentTotal.value)
+})
+
+function collectBuildings(list: ResidentItem[]) {
+  const set = new Set(buildingOptions.value)
+  list.forEach(item => {
+    if (item.building) set.add(item.building)
+  })
+  buildingOptions.value = Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+}
+
+async function loadBuildingOptions() {
+  try {
+    const res = await residentApi.list({ page: 1, pageSize: 100, sort: '-createdAt' })
+    collectBuildings(res.list || [])
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function loadResidents(page = currentPage.value) {
+  loading.value = true
+  try {
+    const res = await residentApi.list({
+      page,
+      pageSize: PAGE_SIZE,
+      keyword: appliedKeyword.value || undefined,
+      building: selectedBuilding.value || undefined,
+      userType: selectedUserType.value || undefined,
+      status: activeStatus.value === 'all' ? undefined : activeStatus.value,
+      sort: '-createdAt'
+    })
+    residents.value = mapResidents(res.list || [])
+    residentTotal.value = res.pagination?.total ?? residents.value.length
+    currentPage.value = res.pagination?.page ?? page
+    totalPages.value = res.pagination?.totalPages ?? 1
+    if (!selectedBuilding.value) {
+      collectBuildings(res.list || [])
+    }
+  } catch (e) {
+    console.error(e)
+    residents.value = []
+    residentTotal.value = 0
+    totalPages.value = 1
+  } finally {
+    loading.value = false
+  }
+}
+
+function applyFilters() {
+  currentPage.value = 1
+  loadResidents(1)
+}
+
+function submitSearch() {
+  clearTimeout(searchTimer)
+  appliedKeyword.value = searchKeyword.value.trim()
+  currentPage.value = 1
+  loadResidents(1)
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(submitSearch, 300)
+}
+
+function changePage(page: number) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  loadResidents(page)
+}
+
+watch(activeStatus, () => {
+  currentPage.value = 1
+  loadResidents(1)
+})
 
 onMounted(async () => {
   try {
-    const [res, overview] = await Promise.all([
-      residentApi.list({ page: 1, pageSize: 20 }),
-      dashboardApi.overview()
-    ])
-    residents.value = mapResidents(res.list || [])
-    residentTotal.value = res.pagination?.total ?? residents.value.length
+    const overview = await dashboardApi.overview()
+    await Promise.all([loadBuildingOptions(), loadResidents(1)])
 
     const summary = overview.summary || {}
     const trends = overview.trends || {}
@@ -157,7 +255,8 @@ onMounted(async () => {
         ? `${formatPercent(summary.propertyFeeCollectionRate)}%`
         : '—'
     }
-  } finally {
+  } catch (e) {
+    console.error(e)
     loading.value = false
   }
 })
@@ -174,13 +273,24 @@ onMounted(async () => {
 .search input { flex: 1; border: none; background: transparent; font-size: 14px; color: #1f1f2e; outline: none; }
 .search input::placeholder { color: #8c8c9a; }
 .filters { display: flex; gap: 12px; }
-.select { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #e8e8ec; border-radius: 8px; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; min-width: 120px; }
-.select svg { width: 16px; height: 16px; color: #8c8c9a; }
+.select {
+  padding: 10px 14px;
+  border: 1px solid #e8e8ec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5c5c66;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 120px;
+  outline: none;
+}
+.select:focus { border-color: #5c5c9e; }
 .table { background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px; }
 .table table { width: 100%; font-size: 14px; }
 .table thead th { text-align: left; padding: 14px 24px; color: #8c8c9a; font-weight: 500; background: #fafafc; border-bottom: 1px solid #f0f0f3; }
 .table tbody td { padding: 16px 24px; color: #1f1f2e; border-bottom: 1px solid #f0f0f3; vertical-align: middle; }
 .table tbody tr:last-child td { border-bottom: none; }
+.table .emptyCell { text-align: center; padding: 24px; color: #8c8c9a; }
 .table .info { display: flex; align-items: center; gap: 12px; }
 .table .avatar { width: 36px; height: 36px; border-radius: 50%; color: #ffffff; font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; }
 .table .name { font-weight: 500; color: #1f1f2e; }
@@ -195,10 +305,10 @@ onMounted(async () => {
 .table .detail { border-color: #e8e8ec; color: #8c8c9a; }
 .table .footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 1px solid #f0f0f3; }
 .table .total { font-size: 13px; color: #8c8c9a; }
-.table .pagination { display: flex; gap: 8px; }
-.table .pageBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; }
+.table .pagination { display: flex; align-items: center; gap: 8px; }
+.table .pageInfo { font-size: 13px; color: #8c8c9a; min-width: 48px; text-align: center; }
+.table .pageBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .table .pageBtn:disabled { color: #c8c8d0; cursor: not-allowed; }
-.table .pageBtn.active { background: #5c5c9e; color: #ffffff; border-color: #5c5c9e; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .statCard { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; }
 .statCard .icon { width: 48px; height: 48px; border-radius: 50%; background: #f4f5f7; color: #5c5c9e; display: flex; align-items: center; justify-content: center; }
@@ -212,6 +322,7 @@ onMounted(async () => {
   .header { flex-direction: column; gap: 16px; }
   .toolbar { flex-direction: column; align-items: stretch; }
   .filters { width: 100%; }
+  .filters .select { flex: 1; }
   .table { overflow-x: auto; }
   .table table { min-width: 700px; }
   .stats { grid-template-columns: 1fr; }
