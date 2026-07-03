@@ -11,13 +11,15 @@ import type {
 
 const avatarColors = ['#5c5c9e', '#3aaf7d', '#f5a623', '#e05c5c', '#6a6aae']
 
-export function initials(name: string) {
-  return name.trim().slice(0, 1) || '?'
+export function initials(name?: string | null) {
+  return (name ?? '').trim().slice(0, 1) || '?'
 }
 
-export function avatarColor(seed: string) {
+export function avatarColor(seed?: string | null) {
+  const text = seed ?? ''
+  if (!text) return avatarColors[0]
   let hash = 0
-  for (let i = 0; i < seed.length; i++) hash += seed.charCodeAt(i)
+  for (let i = 0; i < text.length; i++) hash += text.charCodeAt(i)
   return avatarColors[Math.abs(hash) % avatarColors.length]
 }
 
@@ -98,17 +100,24 @@ function normalizeOperationResult(log: OperationLogItem): '成功' | '失败' {
   return '成功'
 }
 
+function resolveResidentName(item: ResidentItem) {
+  return item.name || item.phone || '未知'
+}
+
 export function mapResidents(list: ResidentItem[]) {
-  return list.map(item => ({
-    id: item.id,
-    name: item.name,
-    initials: initials(item.name),
-    avatarColor: avatarColor(item.id),
-    building: [item.building, item.unit, item.room].filter(Boolean).join('') || '-',
-    identity: item.userType === 'owner' ? 'owner' as const : 'tenant' as const,
-    familyCount: item.familyId ? '—' : '—',
-    registerTime: item.createdAt || '-'
-  }))
+  return list.map(item => {
+    const name = resolveResidentName(item)
+    return {
+      id: item.id,
+      name,
+      initials: initials(name),
+      avatarColor: avatarColor(item.id || name),
+      building: [item.building, item.unit, item.room].filter(Boolean).join('') || '-',
+      identity: item.userType === 'owner' ? 'owner' as const : 'tenant' as const,
+      familyCount: item.familyId ? '—' : '—',
+      registerTime: item.createdAt || '-'
+    }
+  })
 }
 
 import { getEnumLabel, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL } from '../constants/enums'
@@ -130,20 +139,23 @@ export function mapMerchants(list: MerchantItem[]) {
 }
 
 export function mapPointsUsers(list: ResidentItem[]) {
-  return list.map(item => ({
-    id: item.id,
-    name: item.name,
-    initials: initials(item.name),
-    avatarColor: avatarColor(item.id),
-    room: [item.building, item.room].filter(Boolean).join('') || '-',
-    points: `${formatMoney(item.pointBalance)} pts`,
-    pcoin: `${formatMoney(item.coinBalance)} PCoin`,
-    coinBalance: item.coinBalance ?? 0,
-    frozenRecordId: undefined as string | undefined,
-    status: item.coinFrozen || item.status === 'frozen' || item.status === 'disabled'
-      ? 'frozen' as const
-      : 'normal' as const
-  }))
+  return list.map(item => {
+    const name = resolveResidentName(item)
+    return {
+      id: item.id,
+      name,
+      initials: initials(name),
+      avatarColor: avatarColor(item.id || name),
+      room: [item.building, item.room].filter(Boolean).join('') || '-',
+      points: `${formatMoney(item.pointBalance)} pts`,
+      pcoin: `${formatMoney(item.coinBalance)} PCoin`,
+      coinBalance: item.coinBalance ?? 0,
+      frozenRecordId: undefined as string | undefined,
+      status: item.coinFrozen || item.status === 'frozen' || item.status === 'disabled'
+        ? 'frozen' as const
+        : 'normal' as const
+    }
+  })
 }
 
 export function mapAnnouncements(list: AnnouncementItem[]) {

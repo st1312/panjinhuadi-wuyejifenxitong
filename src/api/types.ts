@@ -40,7 +40,7 @@ export interface UserProfile {
 
 export interface ResidentItem {
   id: string
-  name: string
+  name?: string
   phone?: string
   avatarUrl?: string
   role?: string
