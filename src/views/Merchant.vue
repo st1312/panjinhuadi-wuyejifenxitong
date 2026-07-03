@@ -74,6 +74,8 @@
           <thead>
             <tr>
               <th>商家名称</th>
+              <th>等级</th>
+              <th>审核状态</th>
               <th>抽佣比例</th>
               <th>积分兑换比（分/元）</th>
               <th>返现比例</th>
@@ -83,10 +85,10 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
+              <td colspan="8" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
             </tr>
             <tr v-else-if="!merchants.length">
-              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">暂无数据</td>
+              <td colspan="8" style="text-align:center;padding:24px;color:#8c8c9a">暂无数据</td>
             </tr>
             <template v-else>
             <tr v-for="merchant in merchants" :key="merchant.id">
@@ -99,6 +101,8 @@
                   </div>
                 </div>
               </td>
+              <td>{{ merchant.merchantLevel }}</td>
+              <td>{{ merchant.auditStatus }}</td>
               <td><span class="badge">{{ merchant.commissionRate }}</span></td>
               <td>
                 <div class="points"><IconSvg name="coin" /><span>{{ merchant.pointsRatio }}</span></div>

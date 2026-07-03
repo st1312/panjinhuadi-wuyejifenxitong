@@ -1,15 +1,18 @@
 import { API_PATH_PREFIX, API_REMOTE_BASE_URL } from '../config/api'
 import type { ApiResponse } from './types'
+import { getAccessToken, getRefreshToken } from '../stores/tokenStore'
 
 /** 开发走 Vite 代理（同源），生产直连远程 API */
 const API_BASE_URL = import.meta.env.DEV ? API_PATH_PREFIX : API_REMOTE_BASE_URL
 
 export class ApiError extends Error {
   code: number
+  errors?: Array<{ field: string; message: string; value?: unknown }>
 
-  constructor(code: number, message: string) {
+  constructor(code: number, message: string, errors?: ApiError['errors']) {
     super(message)
     this.code = code
+    this.errors = errors
   }
 }
 
@@ -17,26 +20,47 @@ type TokenGetter = () => { accessToken: string; refreshToken: string }
 type CompanyIdGetter = () => string
 type TokenRefresher = () => Promise<boolean>
 type LogoutHandler = () => void
+type ForbiddenHandler = (message: string) => void
 
-let getTokens: TokenGetter = () => ({ accessToken: '', refreshToken: '' })
+let getTokens: TokenGetter = () => ({
+  accessToken: getAccessToken(),
+  refreshToken: getRefreshToken()
+})
 let getPropertyCompanyId: CompanyIdGetter = () => ''
 let refreshTokens: TokenRefresher = async () => false
 let onUnauthorized: LogoutHandler = () => {}
+let onForbidden: ForbiddenHandler = () => {}
+
+let isRefreshing = false
+let refreshWaiters: Array<(token: string) => void> = []
+
+const AUTH_ERROR_CODES = new Set([20001, 20002, 20003])
+const FORBIDDEN_ERROR_CODES = new Set([20004, 20005])
 
 export function configureRequest(options: {
-  getTokens: TokenGetter
+  getTokens?: TokenGetter
   getPropertyCompanyId?: CompanyIdGetter
   refreshTokens: TokenRefresher
   onUnauthorized: LogoutHandler
+  onForbidden?: ForbiddenHandler
 }) {
-  getTokens = options.getTokens
+  if (options.getTokens) getTokens = options.getTokens
   if (options.getPropertyCompanyId) getPropertyCompanyId = options.getPropertyCompanyId
   refreshTokens = options.refreshTokens
   onUnauthorized = options.onUnauthorized
+  if (options.onForbidden) onForbidden = options.onForbidden
 }
 
 function withCompanyQuery(path: string) {
-  if (!path.startsWith('/admin/') && !path.startsWith('/reports/') && !path.startsWith('/residents') && !path.startsWith('/merchants')) return path
+  if (
+    !path.startsWith('/admin/') &&
+    !path.startsWith('/reports/') &&
+    !path.startsWith('/residents') &&
+    !path.startsWith('/merchants') &&
+    !path.startsWith('/announcements')
+  ) {
+    return path
+  }
 
   const companyId = getPropertyCompanyId()
   if (!companyId) return path
@@ -74,6 +98,44 @@ async function parseResponse<T>(res: Response): Promise<ApiResponse<T>> {
   }
 }
 
+function waitForTokenRefresh() {
+  return new Promise<string>((resolve) => {
+    refreshWaiters.push(resolve)
+  })
+}
+
+async function tryRefreshToken() {
+  if (isRefreshing) {
+    return waitForTokenRefresh()
+  }
+  isRefreshing = true
+  try {
+    const refreshed = await refreshTokens()
+    const { accessToken } = getTokens()
+    if (refreshed && accessToken) {
+      refreshWaiters.forEach((cb) => cb(accessToken))
+      refreshWaiters = []
+      return accessToken
+    }
+    refreshWaiters = []
+    onUnauthorized()
+    throw new ApiError(20002, '登录已过期，请重新登录')
+  } finally {
+    isRefreshing = false
+  }
+}
+
+function handleAuthFailure(json: ApiResponse<unknown>, res: Response) {
+  onUnauthorized()
+  throw new ApiError(json.code || res.status, json.message || '登录已过期，请重新登录')
+}
+
+function handleForbidden(json: ApiResponse<unknown>, res: Response) {
+  const message = json.message || '您无权执行此操作'
+  onForbidden(message)
+  throw new ApiError(json.code || res.status, message)
+}
+
 export async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -100,17 +162,21 @@ export async function request<T>(
 
   const json = await parseResponse<T>(res)
 
-  if ((json.code === 20002 || res.status === 401) && auth && !retried) {
-    const refreshed = await refreshTokens()
-    if (refreshed) {
+  if (auth && !retried && (res.status === 401 || AUTH_ERROR_CODES.has(json.code))) {
+    if (json.code === 20002) {
+      await tryRefreshToken()
       return request<T>(path, options, auth, true)
     }
-    onUnauthorized()
-    throw new ApiError(json.code, json.message || '登录已过期')
+    handleAuthFailure(json, res)
+  }
+
+  if (res.status === 403 || FORBIDDEN_ERROR_CODES.has(json.code)) {
+    handleForbidden(json, res)
   }
 
   if (json.code !== 0) {
-    throw new ApiError(json.code, json.message || '请求失败')
+    const errors = (json as ApiResponse<T> & { errors?: ApiError['errors'] }).errors
+    throw new ApiError(json.code, json.message || '请求失败', errors)
   }
 
   return json.data

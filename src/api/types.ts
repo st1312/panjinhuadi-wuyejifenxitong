@@ -159,6 +159,21 @@ export interface AnnouncementItem {
   publisher?: string
 }
 
+export interface AnnouncementCreatePayload {
+  title: string
+  content: string
+  announcementType: string
+  propertyCompanyId?: string
+  communityId?: string
+  merchantId?: string
+  coverUrls?: string[]
+  targetRoles?: string[]
+  targetBuildings?: string[]
+  collectEnabled?: boolean
+  collectFields?: unknown[]
+  status?: string
+}
+
 export interface OperationLogItem {
   id?: string
   createdAt?: string

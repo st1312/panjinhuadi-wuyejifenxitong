@@ -111,12 +111,16 @@ export function mapResidents(list: ResidentItem[]) {
   }))
 }
 
+import { getEnumLabel, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL } from '../constants/enums'
+
 export function mapMerchants(list: MerchantItem[]) {
   return list.map(item => ({
     id: item.id,
     name: item.name,
     category: item.category || '-',
-    categoryCode: item.category?.includes('餐') ? 'dining' : 'retail',
+    categoryCode: item.category?.includes('餐') ? 'dining' as const : 'retail' as const,
+    merchantLevel: getEnumLabel(MERCHANT_LEVEL_LABEL, item.merchantLevel),
+    auditStatus: getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, item.auditStatus),
     commissionRate: item.commissionRate !== undefined ? `${formatPercent(item.commissionRate)}%` : '-',
     pointsRatio: item.pointExchangeRate !== undefined ? `${item.pointExchangeRate} / ¥1` : '-',
     cashbackRate: item.coinRebateRate !== undefined ? `${formatPercent(item.coinRebateRate)}%` : '0%',

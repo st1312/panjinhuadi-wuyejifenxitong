@@ -10,7 +10,7 @@
           <button class="btnSecondary" @click="openCoinModal('freeze')">冻结物业币</button>
           <button class="btnSecondary" @click="openCoinModal('unfreeze')">解冻物业币</button>
           <button class="btnSecondary" @click="openAuditModal">审核注册</button>
-          <button class="btnPrimary">发布通告</button>
+          <button class="btnPrimary" @click="openAnnouncementModal">发布通告</button>
         </div>
       </div>
       <div v-if="loading" class="loading">加载中...</div>
@@ -215,9 +215,9 @@
               <div class="field">
                 <label class="label">商家等级</label>
                 <select v-model="auditForm.merchantLevel" class="input">
-                  <option value="property_certified">物业认证</option>
-                  <option value="official_certified">官方认证</option>
-                  <option value="normal">普通</option>
+                  <option v-for="opt in MERCHANT_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
                 </select>
               </div>
               <div class="field">
@@ -259,6 +259,74 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div v-if="announcementModalOpen" class="modalOverlay" @click.self="closeAnnouncementModal">
+        <div class="modal modalScroll">
+          <div class="modalHeader">
+            <h3 class="modalTitle">发布通告</h3>
+            <button class="modalClose" @click="closeAnnouncementModal">&times;</button>
+          </div>
+          <form class="modalBody" @submit.prevent="submitAnnouncementModal">
+            <div class="field">
+              <label class="label">通告标题</label>
+              <input
+                v-model="announcementForm.title"
+                type="text"
+                class="input"
+                maxlength="200"
+                placeholder="输入通告标题"
+                required
+              />
+            </div>
+            <div class="field">
+              <label class="label">通告内容</label>
+              <textarea
+                v-model="announcementForm.content"
+                class="textarea"
+                rows="5"
+                placeholder="输入通告正文"
+                required
+              />
+            </div>
+            <div class="field">
+              <label class="label">公告类型</label>
+              <select v-model="announcementForm.announcementType" class="input" required>
+                <option v-for="opt in ANNOUNCEMENT_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label">覆盖楼栋</label>
+              <input
+                v-model="announcementForm.targetBuildingsText"
+                type="text"
+                class="input"
+                placeholder="多个楼栋用逗号分隔，如：1栋, 2栋, 3栋"
+              />
+              <p class="hint">留空则不限楼栋</p>
+            </div>
+            <div class="field">
+              <label class="label">发布状态</label>
+              <select v-model="announcementForm.status" class="input">
+                <option v-for="opt in ANNOUNCEMENT_STATUS_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+            <p v-if="announcementError" class="error">{{ announcementError }}</p>
+            <p v-if="announcementSuccess" class="success">{{ announcementSuccess }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="closeAnnouncementModal">取消</button>
+              <button type="submit" class="btnPrimary" :disabled="announcementSubmitting">
+                {{ announcementSubmitting ? '提交中...' : '确认发布' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </AppLayout>
 </template>
 
@@ -269,11 +337,20 @@ import IconSvg from '../components/IconSvg.vue'
 import ResidentSearchSelect from '../components/ResidentSearchSelect.vue'
 import FreezeRecordSelect from '../components/FreezeRecordSelect.vue'
 import PendingMerchantSelect from '../components/PendingMerchantSelect.vue'
-import { dashboardApi, merchantApi, operationLogApi, residentApi } from '../api/services'
-import type { MerchantAuditPayload, MerchantItem } from '../api/types'
+import { dashboardApi, announcementApi, merchantApi, operationLogApi, residentApi } from '../api/services'
+import type { AnnouncementCreatePayload, MerchantAuditPayload, MerchantItem } from '../api/types'
 import { mapCollectionRate, mapConsumptionData, mapDashboardStats, mapOperationLogs } from '../api/mappers'
 import { ApiError } from '../api/request'
+import { getAccessToken } from '../stores/tokenStore'
 import { useAuthStore } from '../stores/auth'
+import {
+  ANNOUNCEMENT_STATUS,
+  ANNOUNCEMENT_STATUS_OPTIONS,
+  ANNOUNCEMENT_TYPE,
+  ANNOUNCEMENT_TYPE_OPTIONS,
+  MERCHANT_LEVEL,
+  MERCHANT_LEVEL_OPTIONS
+} from '../constants/enums'
 
 const loading = ref(true)
 const stats = ref<ReturnType<typeof mapDashboardStats>>([])
@@ -307,16 +384,38 @@ const auditModalKey = ref(0)
 const auditSubmitting = ref(false)
 const auditError = ref('')
 const auditSuccess = ref('')
-const auditForm = ref({
+const auditForm = ref<{
+  merchantId: string
+  auditResult: 'approved' | 'rejected'
+  rejectReason: string
+  remark: string
+  merchantLevel: string
+  category: string
+  businessHours: string
+  deliveryFee: string
+  freeDeliveryThreshold: string
+}>({
   merchantId: '',
   auditResult: 'approved' as 'approved' | 'rejected',
   rejectReason: '',
   remark: '',
-  merchantLevel: 'property_certified',
+  merchantLevel: MERCHANT_LEVEL.PROPERTY_CERTIFIED,
   category: '',
   businessHours: '',
   deliveryFee: '',
   freeDeliveryThreshold: ''
+})
+
+const announcementModalOpen = ref(false)
+const announcementSubmitting = ref(false)
+const announcementError = ref('')
+const announcementSuccess = ref('')
+const announcementForm = ref({
+  title: '',
+  content: '',
+  announcementType: ANNOUNCEMENT_TYPE.PROPERTY,
+  targetBuildingsText: '',
+  status: ANNOUNCEMENT_STATUS.PUBLISHED
 })
 
 const collectionRadius = 50
@@ -390,7 +489,7 @@ function resetAuditForm() {
     auditResult: 'approved',
     rejectReason: '',
     remark: '',
-    merchantLevel: 'property_certified',
+    merchantLevel: MERCHANT_LEVEL.PROPERTY_CERTIFIED,
     category: '',
     businessHours: '',
     deliveryFee: '',
@@ -411,6 +510,80 @@ function closeAuditModal() {
   resetAuditForm()
 }
 
+function resetAnnouncementForm() {
+  announcementForm.value = {
+    title: '',
+    content: '',
+    announcementType: ANNOUNCEMENT_TYPE.PROPERTY,
+    targetBuildingsText: '',
+    status: ANNOUNCEMENT_STATUS.PUBLISHED
+  }
+  announcementError.value = ''
+  announcementSuccess.value = ''
+}
+
+function openAnnouncementModal() {
+  announcementModalOpen.value = true
+  resetAnnouncementForm()
+}
+
+function closeAnnouncementModal() {
+  announcementModalOpen.value = false
+  resetAnnouncementForm()
+}
+
+function parseTargetBuildings(text: string) {
+  return text
+    .split(/[,，]/)
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+async function submitAnnouncementModal() {
+  const auth = useAuthStore()
+  const title = announcementForm.value.title.trim()
+  const content = announcementForm.value.content.trim()
+  if (!title) {
+    announcementError.value = '请填写通告标题'
+    return
+  }
+  if (!content) {
+    announcementError.value = '请填写通告内容'
+    return
+  }
+
+  announcementSubmitting.value = true
+  announcementError.value = ''
+  announcementSuccess.value = ''
+
+  try {
+    const payload: AnnouncementCreatePayload = {
+      title,
+      content,
+      announcementType: announcementForm.value.announcementType,
+      status: announcementForm.value.status
+    }
+    if (auth.propertyCompanyId) {
+      payload.propertyCompanyId = auth.propertyCompanyId
+    }
+    const buildings = parseTargetBuildings(announcementForm.value.targetBuildingsText)
+    if (buildings.length) {
+      payload.targetBuildings = buildings
+    }
+
+    const result = await announcementApi.create(payload)
+    announcementSuccess.value = announcementForm.value.status === 'published'
+      ? `通告「${result.title}」已发布`
+      : `通告「${result.title}」已存为草稿`
+    await loadOperationLogs()
+    setTimeout(closeAnnouncementModal, 1500)
+  } catch (e) {
+    announcementError.value = e instanceof ApiError ? e.message : '发布失败，请稍后重试'
+  } finally {
+    announcementSubmitting.value = false
+  }
+}
+
 function onMerchantSelect(merchant: MerchantItem) {
   auditForm.value.category = merchant.category || ''
   auditForm.value.businessHours = merchant.businessHours || ''
@@ -424,8 +597,7 @@ function onMerchantSelect(merchant: MerchantItem) {
 }
 
 async function submitAuditModal() {
-  const auth = useAuthStore()
-  if (!auth.accessToken && !localStorage.getItem('accessToken')) {
+  if (!getAccessToken()) {
     auditError.value = '登录已过期，请重新登录'
     return
   }

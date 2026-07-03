@@ -3,34 +3,36 @@ import { ref } from 'vue'
 import { authApi } from '../api/services'
 import { configureRequest } from '../api/request'
 import type { UserProfile } from '../api/types'
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  hasValidSession,
+  setTokens
+} from './tokenStore'
 
 const AUTH_KEY = 'wuyejifen_auth'
-const ACCESS_KEY = 'accessToken'
-const REFRESH_KEY = 'refreshToken'
 const PROFILE_KEY = 'userProfile'
 const COMPANY_KEY = 'propertyCompanyId'
 
 export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref(localStorage.getItem(ACCESS_KEY) || '')
-  const refreshToken = ref(localStorage.getItem(REFRESH_KEY) || '')
   const profile = ref<UserProfile | null>(readProfile())
   const propertyCompanyId = ref(readCompanyId())
-
-  const isLoggedIn = ref(!!localStorage.getItem(AUTH_KEY) && !!accessToken.value)
+  const isLoggedIn = ref(!!localStorage.getItem(AUTH_KEY) && hasValidSession())
   const username = ref(profile.value?.name || localStorage.getItem('wuyejifen_user') || '')
 
   configureRequest({
     getTokens: () => ({
-      accessToken: accessToken.value || localStorage.getItem(ACCESS_KEY) || '',
-      refreshToken: refreshToken.value || localStorage.getItem(REFRESH_KEY) || ''
+      accessToken: getAccessToken(),
+      refreshToken: getRefreshToken()
     }),
     getPropertyCompanyId: () => propertyCompanyId.value || readCompanyId(),
     refreshTokens: async () => {
-      const token = refreshToken.value || localStorage.getItem(REFRESH_KEY) || ''
+      const token = getRefreshToken()
       if (!token) return false
       try {
         const data = await authApi.refreshToken(token)
-        setSession(data.accessToken, data.refreshToken, profile.value, propertyCompanyId.value, true)
+        setTokens(data.accessToken, data.refreshToken, true)
         return true
       } catch {
         return false
@@ -41,6 +43,9 @@ export const useAuthStore = defineStore('auth', () => {
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.assign('/login')
       }
+    },
+    onForbidden: () => {
+      // 403 仅提示，不跳转登录
     }
   })
 
@@ -67,16 +72,13 @@ export const useAuthStore = defineStore('auth', () => {
     companyId: string,
     remember: boolean
   ) {
-    accessToken.value = access
-    refreshToken.value = refresh
+    setTokens(access, refresh, remember)
     profile.value = user
     propertyCompanyId.value = companyId
     username.value = user?.name || username.value
 
     if (remember) {
       localStorage.setItem(AUTH_KEY, '1')
-      localStorage.setItem(ACCESS_KEY, access)
-      localStorage.setItem(REFRESH_KEY, refresh)
       localStorage.setItem(COMPANY_KEY, companyId)
       if (user) localStorage.setItem(PROFILE_KEY, JSON.stringify(user))
       if (user?.name) localStorage.setItem('wuyejifen_user', user.name)
@@ -109,14 +111,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    accessToken.value = ''
-    refreshToken.value = ''
+    clearTokens()
     profile.value = null
     isLoggedIn.value = false
     username.value = ''
     localStorage.removeItem(AUTH_KEY)
-    localStorage.removeItem(ACCESS_KEY)
-    localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(PROFILE_KEY)
     localStorage.removeItem('wuyejifen_user')
   }
@@ -124,8 +123,8 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     isLoggedIn,
     username,
-    accessToken,
-    refreshToken,
+    accessToken: getAccessToken,
+    refreshToken: getRefreshToken,
     profile,
     propertyCompanyId,
     login,

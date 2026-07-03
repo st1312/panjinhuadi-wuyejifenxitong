@@ -1,5 +1,6 @@
 import { buildQuery, request } from './request'
 import type {
+  AnnouncementCreatePayload,
   AnnouncementItem,
   DashboardOverview,
   DeliveryOrderItem,
@@ -138,7 +139,7 @@ export const merchantApi = {
 
   list(params: Record<string, string | number | undefined> = {}) {
 
-    return request<PageResult<MerchantItem>>(`/admin/platform-merchants${buildQuery(params)}`)
+    return request<PageResult<MerchantItem>>(`/merchants${buildQuery(params)}`)
 
   },
 
@@ -189,6 +190,18 @@ export const announcementApi = {
   list(params: Record<string, string | number | undefined> = {}) {
 
     return request<PageResult<AnnouncementItem>>(`/admin/announcements${buildQuery(params)}`)
+
+  },
+
+  create(payload: AnnouncementCreatePayload) {
+
+    return request<AnnouncementItem>('/announcements', {
+
+      method: 'POST',
+
+      body: JSON.stringify(payload)
+
+    })
 
   }
 
