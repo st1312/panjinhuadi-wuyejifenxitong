@@ -87,7 +87,17 @@ export const operationLogApi = {
 
 export const residentApi = {
 
-  list(params: Record<string, string | number | undefined> = {}) {
+  list(params: {
+    page?: number
+    pageSize?: number
+    keyword?: string
+    communityId?: string
+    building?: string
+    status?: string
+    role?: string
+    propertyCompanyId?: string
+    sort?: string
+  } = {}) {
 
     return request<PageResult<ResidentItem>>(`/residents${buildQuery(params)}`)
 

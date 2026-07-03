@@ -24,7 +24,7 @@
         :class="{ active: item.id === modelValue }"
         @mousedown.prevent="select(item)"
       >
-        <span class="name">{{ item.name }}</span>
+        <span class="name">{{ resolveResidentDisplayName(item) }}</span>
         <span class="meta">{{ formatRoom(item) }} · {{ formatBalance(item) }}</span>
       </button>
     </div>
@@ -36,6 +36,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import IconSvg from './IconSvg.vue'
 import { residentApi } from '../api/services'
 import type { ResidentItem } from '../api/types'
+import { resolveResidentDisplayName } from '../api/mappers'
 import { ApiError } from '../api/request'
 
 const props = defineProps<{
@@ -65,7 +66,7 @@ function formatBalance(item: ResidentItem) {
 }
 
 function formatLabel(item: ResidentItem) {
-  return `${item.name} · ${formatRoom(item)} · ${formatBalance(item)}`
+  return `${resolveResidentDisplayName(item)} · ${formatRoom(item)} · ${formatBalance(item)}`
 }
 
 async function fetchResidents() {

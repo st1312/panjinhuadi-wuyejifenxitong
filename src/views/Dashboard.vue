@@ -4,7 +4,7 @@
       <div class="header">
         <div>
           <h1 class="title">总览</h1>
-          <p class="desc">今日运营数据及最近动态</p>
+          <p class="desc">{{ periodDesc }}</p>
         </div>
         <div class="actions">
           <button class="btnSecondary" @click="openCoinModal('freeze')">冻结物业币</button>
@@ -39,31 +39,46 @@
               </div>
             </div>
           </div>
-          <div class="consumptionChart">
-            <h3 class="title">商家消费分布</h3>
+          <div class="pendingAudit">
+            <h3 class="title">待审核</h3>
             <div class="body">
-              <div v-for="item in consumptionData" :key="item.name" class="item">
-                <div class="barWrap"><div class="bar" :style="{ height: `${item.value}%` }" /></div>
-                <div class="name">{{ item.name }}</div>
-              </div>
+              <div class="count">{{ pendingAuditCount }}</div>
+              <div class="hint">条待处理申请</div>
             </div>
           </div>
+        </div>
+        <div v-if="recentActivity.length" class="recentActivity">
+          <div class="header">
+            <h3 class="title">最近动态</h3>
+          </div>
+          <ul class="activityList">
+            <li v-for="item in recentActivity" :key="item.id" class="activityItem">
+              <span class="activityTime">{{ item.timestamp }}</span>
+              <span class="activityDesc">{{ item.description }}</span>
+            </li>
+          </ul>
         </div>
         <div class="recentLog">
           <div class="header">
             <h3 class="title">最近操作日志</h3>
-            <button class="more" @click="openAllLogs">查看全部</button>
+            <button
+              v-if="!logsLoading && (operationLogs.length || logsExpanded)"
+              class="more"
+              @click="toggleLogsExpand"
+            >
+              {{ logsExpanded ? '收起' : '查看全部' }}
+            </button>
           </div>
           <table class="table">
             <thead><tr><th>时间</th><th>操作人</th><th>操作内容</th><th>结果</th></tr></thead>
             <tbody>
-              <tr v-if="logsLoading">
+              <tr v-if="logsLoading || (logsExpanded && allLogsLoading)">
                 <td colspan="4" class="emptyCell">加载中...</td>
               </tr>
-              <tr v-else-if="!operationLogs.length">
+              <tr v-else-if="!displayedLogs.length">
                 <td colspan="4" class="emptyCell">暂无操作日志</td>
               </tr>
-              <tr v-for="log in operationLogs" :key="log.id || log.time + log.content">
+              <tr v-for="log in displayedLogs" :key="log.id || log.time + log.content">
                 <td>{{ log.time }}</td>
                 <td>{{ log.operator }}</td>
                 <td>{{ log.content }}</td>
@@ -71,6 +86,11 @@
               </tr>
             </tbody>
           </table>
+          <div v-if="logsExpanded && allLogsTotalPages > 1" class="logsPagination">
+            <button class="pageBtn" :disabled="allLogsPage <= 1 || allLogsLoading" @click="changeAllLogsPage(allLogsPage - 1)">&lt;</button>
+            <span class="pageInfo">{{ allLogsPage }} / {{ allLogsTotalPages }}</span>
+            <button class="pageBtn" :disabled="allLogsPage >= allLogsTotalPages || allLogsLoading" @click="changeAllLogsPage(allLogsPage + 1)">&gt;</button>
+          </div>
         </div>
       </template>
     </div>
@@ -132,41 +152,6 @@
               </button>
             </div>
           </form>
-        </div>
-      </div>
-    </Teleport>
-
-    <Teleport to="body">
-      <div v-if="allLogsOpen" class="modalOverlay" @click.self="closeAllLogs">
-        <div class="modal modalWide">
-          <div class="modalHeader">
-            <h3 class="modalTitle">操作日志</h3>
-            <button class="modalClose" @click="closeAllLogs">&times;</button>
-          </div>
-          <div class="modalBody logsModalBody">
-            <table class="table">
-              <thead><tr><th>时间</th><th>操作人</th><th>操作内容</th><th>结果</th></tr></thead>
-              <tbody>
-                <tr v-if="allLogsLoading">
-                  <td colspan="4" class="emptyCell">加载中...</td>
-                </tr>
-                <tr v-else-if="!allLogs.length">
-                  <td colspan="4" class="emptyCell">暂无操作日志</td>
-                </tr>
-                <tr v-for="log in allLogs" :key="log.id || log.time + log.content">
-                  <td>{{ log.time }}</td>
-                  <td>{{ log.operator }}</td>
-                  <td>{{ log.content }}</td>
-                  <td><span class="tag" :class="log.result === '成功' ? 'tagSuccess' : 'tagFail'">{{ log.result }}</span></td>
-                </tr>
-              </tbody>
-            </table>
-            <div v-if="allLogsTotalPages > 1" class="logsPagination">
-              <button class="pageBtn" :disabled="allLogsPage <= 1 || allLogsLoading" @click="changeAllLogsPage(allLogsPage - 1)">&lt;</button>
-              <span class="pageInfo">{{ allLogsPage }} / {{ allLogsTotalPages }}</span>
-              <button class="pageBtn" :disabled="allLogsPage >= allLogsTotalPages || allLogsLoading" @click="changeAllLogsPage(allLogsPage + 1)">&gt;</button>
-            </div>
-          </div>
         </div>
       </div>
     </Teleport>
@@ -339,7 +324,7 @@ import FreezeRecordSelect from '../components/FreezeRecordSelect.vue'
 import PendingMerchantSelect from '../components/PendingMerchantSelect.vue'
 import { dashboardApi, announcementApi, merchantApi, operationLogApi, residentApi } from '../api/services'
 import type { AnnouncementCreatePayload, MerchantAuditPayload, MerchantItem } from '../api/types'
-import { mapCollectionRate, mapConsumptionData, mapDashboardStats, mapOperationLogs } from '../api/mappers'
+import { mapCollectionRate, mapDashboardStats, mapOperationLogs, mapPendingAuditCount, mapPeriodDescription, mapRecentActivity } from '../api/mappers'
 import { ApiError } from '../api/request'
 import { getAccessToken } from '../stores/tokenStore'
 import { useAuthStore } from '../stores/auth'
@@ -353,18 +338,24 @@ import {
 } from '../constants/enums'
 
 const loading = ref(true)
+const periodDesc = ref('今日运营数据及最近动态')
 const stats = ref<ReturnType<typeof mapDashboardStats>>([])
 const collectionRate = ref(0)
-const consumptionData = ref<{ name: string; value: number }[]>([])
+const pendingAuditCount = ref(0)
+const recentActivity = ref<ReturnType<typeof mapRecentActivity>>([])
 const operationLogs = ref<ReturnType<typeof mapOperationLogs>>([])
 const logsLoading = ref(false)
+const logsExpanded = ref(false)
+const logsTotal = ref(0)
+const RECENT_LOGS_LIMIT = 20
 
-const allLogsOpen = ref(false)
 const allLogsLoading = ref(false)
 const allLogs = ref<ReturnType<typeof mapOperationLogs>>([])
 const allLogsPage = ref(1)
 const allLogsTotalPages = ref(1)
 const ALL_LOGS_PAGE_SIZE = 20
+
+const displayedLogs = computed(() => (logsExpanded.value ? allLogs.value : operationLogs.value))
 
 type CoinModalType = 'freeze' | 'unfreeze'
 const coinModal = ref<CoinModalType | null>(null)
@@ -423,14 +414,16 @@ const collectionCircumference = 2 * Math.PI * collectionRadius
 const collectionDashArray = `${collectionCircumference} ${collectionCircumference}`
 const collectionDashOffset = computed(() => collectionCircumference - (collectionRate.value / 100) * collectionCircumference)
 
-async function loadOperationLogs(page = 1, pageSize = 10) {
+async function loadOperationLogs() {
   logsLoading.value = true
   try {
-    const result = await operationLogApi.list({ page, pageSize })
+    const result = await operationLogApi.list({ page: 1, pageSize: RECENT_LOGS_LIMIT })
     operationLogs.value = mapOperationLogs(result.list || [])
+    logsTotal.value = result.pagination?.total ?? operationLogs.value.length
   } catch (e) {
     console.error(e)
     operationLogs.value = []
+    logsTotal.value = 0
   } finally {
     logsLoading.value = false
   }
@@ -443,6 +436,7 @@ async function loadAllLogs(page = 1) {
     allLogs.value = mapOperationLogs(result.list || [])
     allLogsPage.value = result.pagination?.page ?? page
     allLogsTotalPages.value = result.pagination?.totalPages ?? 1
+    logsTotal.value = result.pagination?.total ?? allLogs.value.length
   } catch (e) {
     console.error(e)
     allLogs.value = []
@@ -451,14 +445,22 @@ async function loadAllLogs(page = 1) {
   }
 }
 
-function openAllLogs() {
-  allLogsOpen.value = true
+async function toggleLogsExpand() {
+  if (logsExpanded.value) {
+    logsExpanded.value = false
+    allLogsPage.value = 1
+    return
+  }
+  logsExpanded.value = true
   allLogsPage.value = 1
-  loadAllLogs(1)
+  await loadAllLogs(1)
 }
 
-function closeAllLogs() {
-  allLogsOpen.value = false
+async function refreshOperationLogs() {
+  await loadOperationLogs()
+  if (logsExpanded.value) {
+    await loadAllLogs(allLogsPage.value)
+  }
 }
 
 function changeAllLogsPage(page: number) {
@@ -575,7 +577,7 @@ async function submitAnnouncementModal() {
     announcementSuccess.value = announcementForm.value.status === 'published'
       ? `通告「${result.title}」已发布`
       : `通告「${result.title}」已存为草稿`
-    await loadOperationLogs()
+    await refreshOperationLogs()
     setTimeout(closeAnnouncementModal, 1500)
   } catch (e) {
     announcementError.value = e instanceof ApiError ? e.message : '发布失败，请稍后重试'
@@ -642,7 +644,7 @@ async function submitAuditModal() {
     auditSuccess.value = auditForm.value.auditResult === 'approved'
       ? `已通过「${result.name}」的入驻申请`
       : `已拒绝「${result.name}」的入驻申请`
-    await loadOperationLogs()
+    await refreshOperationLogs()
     setTimeout(closeAuditModal, 1500)
   } catch (e) {
     auditError.value = e instanceof ApiError ? e.message : '审核失败，请稍后重试'
@@ -683,7 +685,7 @@ async function submitCoinModal() {
       const result = await residentApi.unfreezeCoin(residentId, payload)
       coinSuccess.value = `已成功解冻 ${result.unfrozenAmount} 元，当前余额 ${result.newBalance} 元`
     }
-    await loadOperationLogs()
+    await refreshOperationLogs()
     setTimeout(closeCoinModal, 1500)
   } catch (e) {
     coinError.value = e instanceof ApiError ? e.message : '操作失败，请稍后重试'
@@ -695,9 +697,11 @@ async function submitCoinModal() {
 onMounted(async () => {
   try {
     const overview = await dashboardApi.overview()
+    periodDesc.value = mapPeriodDescription(overview)
     stats.value = mapDashboardStats(overview)
     collectionRate.value = mapCollectionRate(overview)
-    consumptionData.value = mapConsumptionData(overview)
+    pendingAuditCount.value = mapPendingAuditCount(overview)
+    recentActivity.value = mapRecentActivity(overview)
   } catch (e) {
     console.error(e)
   } finally {
@@ -745,13 +749,20 @@ onMounted(async () => {
 .collectionRate .text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .collectionRate .percent { font-size: 32px; font-weight: 700; color: #1f1f2e; }
 .collectionRate .hint { font-size: 13px; color: #8c8c9a; margin-top: 4px; }
-.consumptionChart { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-height: 280px; }
-.consumptionChart .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 24px; }
-.consumptionChart .body { display: flex; align-items: flex-end; justify-content: space-around; height: 180px; }
-.consumptionChart .item { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 1; }
-.consumptionChart .barWrap { width: 32px; height: 140px; background: #f7f7f9; border-radius: 16px; position: relative; overflow: hidden; }
-.consumptionChart .bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(180deg, #8a8ad4 0%, #5c5c9e 100%); border-radius: 16px; transition: height 0.6s ease; }
-.consumptionChart .name { font-size: 13px; color: #5c5c66; }
+.pendingAudit { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; }
+.pendingAudit .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 24px; align-self: flex-start; }
+.pendingAudit .body { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+.pendingAudit .count { font-size: 56px; font-weight: 700; color: #5c5c9e; line-height: 1; }
+.pendingAudit .hint { font-size: 13px; color: #8c8c9a; margin-top: 12px; }
+.recentActivity { background: #ffffff; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.recentActivity .header { margin-bottom: 12px; }
+.recentActivity .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 0; }
+.activityList { list-style: none; margin: 0; padding: 0; }
+.activityItem { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f0f0f3; font-size: 14px; }
+.activityItem:last-child { border-bottom: none; }
+.activityTime { flex-shrink: 0; color: #8c8c9a; min-width: 140px; }
+.activityDesc { color: #1f1f2e; }
+
 .recentLog { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .recentLog .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .recentLog .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 0; }
@@ -800,30 +811,16 @@ onMounted(async () => {
 .radioGroup { display: flex; gap: 20px; }
 .radioItem { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #1f1f2e; cursor: pointer; }
 .radioItem input { accent-color: #5c5c9e; }
-.logsModalBody { padding: 0 24px 24px; }
-.logsModalBody .table { width: 100%; font-size: 14px; }
-.logsModalBody .table thead th {
-  text-align: left;
-  padding: 12px 16px;
-  color: #8c8c9a;
-  font-weight: 500;
-  background: #fafafc;
-  border-bottom: 1px solid #f0f0f3;
-}
-.logsModalBody .table tbody td {
-  padding: 14px 16px;
-  color: #1f1f2e;
-  border-bottom: 1px solid #f0f0f3;
-}
-.logsModalBody .emptyCell { text-align: center; padding: 24px; color: #8c8c9a; }
-.logsPagination {
+.recentLog .logsPagination {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 16px;
+  padding: 16px 0 4px;
+  margin-top: 8px;
+  border-top: 1px solid #f0f0f3;
 }
-.logsPagination .pageBtn {
+.recentLog .logsPagination .pageBtn {
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -832,8 +829,8 @@ onMounted(async () => {
   color: #5c5c66;
   cursor: pointer;
 }
-.logsPagination .pageBtn:disabled { color: #c8c8d0; cursor: not-allowed; }
-.logsPagination .pageInfo { font-size: 13px; color: #8c8c9a; }
+.recentLog .logsPagination .pageBtn:disabled { color: #c8c8d0; cursor: not-allowed; }
+.recentLog .logsPagination .pageInfo { font-size: 13px; color: #8c8c9a; }
 .modalHeader {
   display: flex;
   align-items: center;

@@ -33,15 +33,26 @@ export function formatPercent(rate?: number) {
   return rate <= 1 ? Math.round(rate * 100) : Math.round(rate)
 }
 
-export function mapDashboardStats(overview: DashboardOverview) {
+function resolveDashboardMetrics(overview: DashboardOverview) {
   const summary = overview.summary || {}
+  return {
+    totalResidents: overview.totalResidents ?? summary.totalResidents,
+    monthlyConsumption: overview.monthlyConsumption ?? summary.totalRevenue,
+    totalMerchants: overview.totalMerchants ?? summary.totalMerchants,
+    coinTotalIssued: overview.coinTotalIssued ?? summary.totalCoinIssued,
+    propertyFeeCollectionRate: overview.propertyFeeCollectionRate ?? summary.propertyFeeCollectionRate
+  }
+}
+
+export function mapDashboardStats(overview: DashboardOverview) {
+  const metrics = resolveDashboardMetrics(overview)
   const trends = overview.trends || {}
 
   return [
     {
       code: 'residents',
       title: '总住户',
-      value: `${formatMoney(summary.totalResidents)} 户`,
+      value: `${formatMoney(metrics.totalResidents)} 户`,
       icon: 'resident',
       badge: trends.residentGrowthRate !== undefined ? `↑ ${formatPercent(trends.residentGrowthRate)}%` : undefined,
       variant: 'default' as const
@@ -49,26 +60,48 @@ export function mapDashboardStats(overview: DashboardOverview) {
     {
       code: 'consumption',
       title: '本月消费',
-      value: `¥${formatMoney(summary.totalRevenue)}`,
+      value: `¥${formatMoney(metrics.monthlyConsumption)}`,
       icon: 'money',
       badge: trends.revenueGrowthRate !== undefined ? `↑ ${formatPercent(trends.revenueGrowthRate)}%` : undefined,
       variant: 'default' as const
     },
     {
-      code: 'points',
-      title: '积分池',
-      value: `¥${formatMoney(summary.totalPointsIssued)}`,
-      icon: 'star',
+      code: 'merchants',
+      title: '总商家',
+      value: `${formatMoney(metrics.totalMerchants)} 家`,
+      icon: 'merchant',
+      badge: trends.merchantGrowthRate !== undefined ? `↑ ${formatPercent(trends.merchantGrowthRate)}%` : undefined,
       variant: 'purple' as const
     },
     {
       code: 'coins',
       title: '物业币发行',
-      value: `¥${formatMoney(summary.totalCoinIssued)}`,
+      value: `¥${formatMoney(metrics.coinTotalIssued)}`,
       icon: 'coin',
       variant: 'green' as const
     }
   ]
+}
+
+export function mapPeriodDescription(overview: DashboardOverview) {
+  if (overview.startDate && overview.endDate) {
+    return `${overview.startDate} 至 ${overview.endDate} 运营数据`
+  }
+  if (overview.period === 'month') return '本月运营数据及最近动态'
+  return '今日运营数据及最近动态'
+}
+
+export function mapRecentActivity(overview: DashboardOverview) {
+  return (overview.recentActivity || []).map((item, index) => ({
+    id: `${item.type || 'activity'}-${item.timestamp || index}`,
+    type: item.type || '-',
+    description: item.description || '-',
+    timestamp: item.timestamp || '-'
+  }))
+}
+
+export function mapPendingAuditCount(overview: DashboardOverview) {
+  return overview.pendingAuditCount ?? 0
 }
 
 export function mapConsumptionData(overview: DashboardOverview) {
@@ -100,8 +133,12 @@ function normalizeOperationResult(log: OperationLogItem): '成功' | '失败' {
   return '成功'
 }
 
-function resolveResidentName(item: ResidentItem) {
+export function resolveResidentDisplayName(item: ResidentItem) {
   return item.name || item.phone || '未知'
+}
+
+function resolveResidentName(item: ResidentItem) {
+  return resolveResidentDisplayName(item)
 }
 
 export function mapResidents(list: ResidentItem[]) {
@@ -222,7 +259,8 @@ export function mapPermissionLogs(list: Array<{ createdAt?: string; operatorName
 }
 
 export function mapCollectionRate(overview: DashboardOverview) {
-  return formatPercent(overview.summary?.propertyFeeCollectionRate)
+  const metrics = resolveDashboardMetrics(overview)
+  return formatPercent(metrics.propertyFeeCollectionRate)
 }
 
 export function mapReportsToDashboardOverview(reports: ReportsOverview, period: string): DashboardOverview {
@@ -249,10 +287,10 @@ export function mapReportsToDashboardOverview(reports: ReportsOverview, period: 
 
 export function mapPointsOverview(poolBalance?: number, overview?: DashboardOverview) {
   const summary = overview?.summary || {}
-  const circulation = summary.totalCoinIssued ?? 0
+  const circulation = overview?.coinTotalIssued ?? summary.totalCoinIssued ?? 0
   const consumed = summary.totalCoinRedeemed ?? Math.round(circulation * 0.25)
   return {
-    poolAmount: formatMoney(poolBalance ?? summary.totalPointsIssued),
+    poolAmount: formatMoney(poolBalance ?? overview?.pointPoolBalance ?? summary.totalPointsIssued),
     pcoinTotal: circulation,
     pcoinConsumed: consumed,
     pcoinCirculating: Math.max(circulation - consumed, 0)

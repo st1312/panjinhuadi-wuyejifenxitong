@@ -266,6 +266,17 @@ export interface PointPool {
 }
 
 export interface DashboardOverview {
+  /** 实际接口扁平字段 */
+  totalResidents?: number
+  totalFamilies?: number
+  totalMerchants?: number
+  propertyFeeCollectionRate?: number
+  coinTotalIssued?: number
+  frozenCoinCount?: number
+  monthlyConsumption?: number
+  pendingAuditCount?: number
+  pointPoolBalance?: number
+  /** 文档嵌套结构（兼容） */
   period?: string
   startDate?: string
   endDate?: string
