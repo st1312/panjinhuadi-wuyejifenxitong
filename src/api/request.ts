@@ -162,16 +162,16 @@ export async function request<T>(
 
   const json = await parseResponse<T>(res)
 
-  if (auth && !retried && (res.status === 401 || AUTH_ERROR_CODES.has(json.code))) {
+  if (res.status === 403 || FORBIDDEN_ERROR_CODES.has(json.code)) {
+    handleForbidden(json, res)
+  }
+
+  if (auth && !retried && AUTH_ERROR_CODES.has(json.code)) {
     if (json.code === 20002) {
       await tryRefreshToken()
       return request<T>(path, options, auth, true)
     }
     handleAuthFailure(json, res)
-  }
-
-  if (res.status === 403 || FORBIDDEN_ERROR_CODES.has(json.code)) {
-    handleForbidden(json, res)
   }
 
   if (json.code !== 0) {

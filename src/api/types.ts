@@ -43,8 +43,15 @@ export interface ResidentItem {
   name?: string
   phone?: string
   avatarUrl?: string
+  gender?: number
+  age?: number
+  maritalStatus?: string
+  hasChildren?: boolean
   role?: string
   userType?: string
+  propertyCompanyId?: string
+  propertyName?: string
+  communityId?: string
   communityName?: string
   building?: string
   unit?: string
@@ -53,8 +60,47 @@ export interface ResidentItem {
   pointBalance?: number
   coinBalance?: number
   coinFrozen?: boolean
+  coinHidden?: boolean
+  wechatBound?: boolean
+  totalConsumption?: number
+  totalOrders?: number
   status?: string
   createdAt?: string
+  updatedAt?: string
+}
+
+export interface ResidentCreatePayload {
+  name: string
+  phone: string
+  userType: string
+  role: string
+  propertyCompanyId: string
+  communityId: string
+  avatarUrl?: string
+  gender?: number
+  age?: number
+  maritalStatus?: string
+  hasChildren?: boolean
+  building?: string
+  unit?: string
+  room?: string
+}
+
+export interface ResidentUpdatePayload {
+  name?: string
+  avatarUrl?: string
+  gender?: number
+  age?: number
+  maritalStatus?: string
+  hasChildren?: boolean
+  building?: string
+  unit?: string
+  room?: string
+}
+
+export interface ResidentStatusPayload {
+  status: string
+  reason?: string
 }
 
 export interface CoinFreezePayload {
@@ -144,6 +190,39 @@ export interface MerchantAuditResult {
   operatorId?: string
   operatorName?: string | null
   auditedAt?: string
+}
+
+export interface MerchantProfitSpace {
+  platformMerchantId?: string
+  platformMerchantName?: string
+  propertyCompanyId?: string
+  propertyName?: string
+  period?: string
+  startDate?: string
+  endDate?: string
+  metrics?: {
+    totalOrders?: number
+    totalRevenue?: number
+    totalCommission?: number
+    totalDeliveryFee?: number
+    totalPointCost?: number
+    totalCoinCost?: number
+    netProfit?: number
+    profitMargin?: number
+  }
+  breakdown?: {
+    propertyShare?: number
+    coordinatorShare?: number
+    sectorLeaderShare?: number
+    individualLeaderShare?: number
+    platformShare?: number
+  }
+  comparison?: {
+    lastPeriodRevenue?: number
+    revenueGrowthRate?: number
+    lastPeriodProfit?: number
+    profitGrowthRate?: number
+  }
 }
 
 export interface AnnouncementItem {

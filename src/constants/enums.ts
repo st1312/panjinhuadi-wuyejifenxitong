@@ -78,6 +78,24 @@ export const RESIDENT_USER_TYPE_OPTIONS = [
   { value: RESIDENT_USER_TYPE.TENANT, label: '租住人员' }
 ]
 
+export const RESIDENT_STATUS = {
+  ACTIVE: 'active',
+  FROZEN: 'frozen',
+  DISABLED: 'disabled'
+} as const
+
+export const RESIDENT_STATUS_LABEL: Record<string, string> = {
+  active: '正常',
+  frozen: '已冻结',
+  disabled: '已禁用'
+}
+
+export const RESIDENT_STATUS_OPTIONS = [
+  { value: RESIDENT_STATUS.ACTIVE, label: '正常' },
+  { value: RESIDENT_STATUS.FROZEN, label: '冻结' },
+  { value: RESIDENT_STATUS.DISABLED, label: '禁用' }
+]
+
 export const ORDER_STATUS_LABEL: Record<string, string> = {
   pending: '待支付',
   paid: '已支付',

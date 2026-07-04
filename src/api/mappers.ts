@@ -2,12 +2,14 @@ import type {
   AnnouncementItem,
   DashboardOverview,
   MerchantItem,
+  MerchantProfitSpace,
   OperationLogItem,
   PermissionItemDto,
   ReportsOverview,
   ResidentItem,
   RolePresetDto
 } from './types'
+import { getEnumLabel, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, RESIDENT_STATUS_LABEL } from '../constants/enums'
 
 const avatarColors = ['#5c5c9e', '#3aaf7d', '#f5a623', '#e05c5c', '#6a6aae']
 
@@ -147,21 +149,29 @@ export function mapResidents(list: ResidentItem[]) {
     return {
       id: item.id,
       name,
+      phone: item.phone || '-',
       initials: initials(name),
       avatarColor: avatarColor(item.id || name),
       building: [item.building, item.unit, item.room].filter(Boolean).join('') || '-',
       identity: item.userType === 'owner' ? 'owner' as const : 'tenant' as const,
+      status: item.status || 'active',
+      statusLabel: getEnumLabel(RESIDENT_STATUS_LABEL, item.status),
       familyCount: item.familyId ? '—' : '—',
       registerTime: item.createdAt || '-'
     }
   })
 }
 
-import { getEnumLabel, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL } from '../constants/enums'
+export function resolvePlatformMerchantId(item: MerchantItem): string | null {
+  if (item.platformMerchantId) return item.platformMerchantId
+  if (item.id.startsWith('pm_')) return item.id
+  return null
+}
 
 export function mapMerchants(list: MerchantItem[]) {
   return list.map(item => ({
     id: item.id,
+    platformMerchantId: resolvePlatformMerchantId(item),
     name: item.name,
     category: item.category || '-',
     categoryCode: item.category?.includes('餐') ? 'dining' as const : 'retail' as const,
@@ -173,6 +183,46 @@ export function mapMerchants(list: MerchantItem[]) {
     ownerPrice: item.memberDiscountPrice ? `${item.memberDiscountPrice}元` : '-',
     status: item.status === 'active' || item.auditStatus === 'approved' ? 'connected' as const : 'disconnected' as const
   }))
+}
+
+export function mapProfitSpaceDisplay(data: MerchantProfitSpace | null) {
+  const metrics = data?.metrics || {}
+  const breakdown = data?.breakdown || {}
+  const revenue = metrics.totalRevenue ?? 0
+  const deliveryFee = metrics.totalDeliveryFee ?? 0
+  const pointCost = metrics.totalPointCost ?? 0
+  const coinCost = metrics.totalCoinCost ?? 0
+  const exchangeCost = pointCost + coinCost
+  // 盈利空间 = 总收入 - 配送费 - 积分成本 - 物业币成本
+  const profitSpace = Math.max(revenue - deliveryFee - pointCost - coinCost, 0)
+  const propertyShare = breakdown.propertyShare ?? 0
+  const coordinatorShare = breakdown.coordinatorShare ?? 0
+
+  const pct = (value: number) => (revenue > 0 ? formatPercent(value / revenue) : 0)
+
+  return {
+    merchantName: data?.platformMerchantName || '—',
+    propertyName: data?.propertyName || '',
+    periodLabel: data?.startDate && data?.endDate ? `${data.startDate} ~ ${data.endDate}` : '',
+    totalOrders: metrics.totalOrders ?? 0,
+    revenue: `¥${formatMoney(revenue)}`,
+    deliveryFee: `${pct(deliveryFee)}%`,
+    deliveryFeeAmount: `¥${formatMoney(deliveryFee)}`,
+    exchangeCost: `${pct(exchangeCost)}%`,
+    exchangeCostDetail: `积分 ¥${formatMoney(pointCost)} + 物业币 ¥${formatMoney(coinCost)}`,
+    profitSpace: `${pct(profitSpace)}%`,
+    profitSpaceAmount: `¥${formatMoney(profitSpace)}`,
+    propertyShare: `${pct(propertyShare)}%`,
+    propertyShareAmount: `¥${formatMoney(propertyShare)}`,
+    coordinatorShare: `${pct(coordinatorShare)}%`,
+    coordinatorShareAmount: `¥${formatMoney(coordinatorShare)}`,
+    revenueGrowth: data?.comparison?.revenueGrowthRate !== undefined
+      ? `${formatPercent(data.comparison.revenueGrowthRate)}%`
+      : undefined,
+    profitGrowth: data?.comparison?.profitGrowthRate !== undefined
+      ? `${formatPercent(data.comparison.profitGrowthRate)}%`
+      : undefined
+  }
 }
 
 export function mapPointsUsers(list: ResidentItem[]) {

@@ -9,6 +9,7 @@ import type {
   LeaderItem,
   LoginResult,
   MerchantItem,
+  MerchantProfitSpace,
   MerchantAuditPayload,
   MerchantAuditResult,
   OperationLogItem,
@@ -20,6 +21,9 @@ import type {
   PropertyCompanyConfig,
   PropertyCompanyDetail,
   ResidentItem,
+  ResidentCreatePayload,
+  ResidentUpdatePayload,
+  ResidentStatusPayload,
   RolePresetDto,
   CoinFreezePayload,
   CoinFreezeResult,
@@ -104,6 +108,35 @@ export const residentApi = {
 
   },
 
+  get(id: string) {
+    return request<ResidentItem>(`/residents/${id}`)
+  },
+
+  create(payload: ResidentCreatePayload) {
+    return request<ResidentItem>('/residents', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  update(id: string, payload: ResidentUpdatePayload) {
+    return request<ResidentItem>(`/residents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateStatus(id: string, payload: ResidentStatusPayload) {
+    return request<ResidentItem>(`/residents/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  remove(id: string) {
+    return request<null>(`/residents/${id}`, { method: 'DELETE' })
+  },
+
   freezeCoin(id: string, payload: CoinFreezePayload) {
 
     return request<CoinFreezeResult>(`/admin/residents/${id}/coin/freeze`, {
@@ -154,6 +187,12 @@ export const merchantApi = {
 
   },
 
+  listPlatform(params: Record<string, string | number | undefined> = {}) {
+
+    return request<PageResult<MerchantItem>>(`/admin/platform-merchants${buildQuery(params)}`)
+
+  },
+
   listPending(params: Record<string, string | number | undefined> = {}) {
 
     return request<PageResult<MerchantItem>>(
@@ -171,6 +210,12 @@ export const merchantApi = {
       body: JSON.stringify(payload)
 
     })
+
+  },
+
+  profitSpace(id: string, params: { period?: string; propertyCompanyId?: string } = {}) {
+
+    return request<MerchantProfitSpace>(`/admin/platform-merchants/${id}/profit-space${buildQuery(params)}`)
 
   }
 
