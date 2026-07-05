@@ -22,7 +22,7 @@
         @update:model-value="onViewModeChange"
       />
 
-      <div class="profitFlow">
+      <div v-if="isPlatformAdmin" class="profitFlow">
         <div class="profitHeader">
           <div class="profitTitle">
             <IconSvg name="merchant" class="headerIcon" />
@@ -509,7 +509,8 @@ import {
   formatPercent,
   mapMerchants,
   mapPlatformMerchants,
-  mapProfitSpaceDisplay
+  mapProfitSpaceDisplay,
+  resolvePlatformMerchantId
 } from '../api/mappers'
 import { ApiError } from '../api/request'
 import {
@@ -636,11 +637,25 @@ const listTotal = computed(() =>
   viewMode.value === 'platform' ? platformMerchantTotal.value : merchantTotal.value
 )
 
-const profitMerchantOptions = computed(() =>
-  Object.values(merchantListCache.value)
-    .map(item => ({ id: item.id, name: item.name || '—' }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-)
+const profitMerchantOptions = computed(() => {
+  const seen = new Set<string>()
+  const options: { id: string; name: string }[] = []
+
+  for (const item of Object.values(merchantListCache.value)) {
+    const platformId = resolvePlatformMerchantId(item)
+    if (!platformId || seen.has(platformId)) continue
+    seen.add(platformId)
+    options.push({ id: platformId, name: item.name || '—' })
+  }
+
+  for (const item of Object.values(platformMerchantListCache.value)) {
+    if (!item.id || seen.has(item.id)) continue
+    seen.add(item.id)
+    options.push({ id: item.id, name: item.name || '—' })
+  }
+
+  return options.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+})
 
 const detailRows = computed(() => {
   const d = detailData.value
@@ -765,8 +780,9 @@ async function loadMerchants(page = currentPage.value) {
     if (!selectedCategory.value) {
       collectCategories(list)
     }
-    if (!selectedProfitMerchantId.value && list.length) {
-      selectedProfitMerchantId.value = list[0].id
+    if (!selectedProfitMerchantId.value && list.length && isPlatformAdmin.value) {
+      const first = profitMerchantOptions.value[0]
+      if (first) selectedProfitMerchantId.value = first.id
     }
   } catch (e) {
     console.error(e)
@@ -811,6 +827,7 @@ async function loadPlatformMerchants(page = currentPage.value) {
 }
 
 async function onPropertyCompanyChange() {
+  if (!isPlatformAdmin.value) return
   profitError.value = ''
   selectedProfitMerchantId.value = ''
   currentPage.value = 1
@@ -826,8 +843,9 @@ async function onPropertyCompanyChange() {
 }
 
 async function loadProfitSpace() {
-  const merchantId = selectedProfitMerchantId.value
-  if (!merchantId) {
+  if (!isPlatformAdmin.value) return
+  const platformMerchantId = selectedProfitMerchantId.value
+  if (!platformMerchantId) {
     profitData.value = mapProfitSpaceDisplay(null)
     profitError.value = profitMerchantOptions.value.length ? '请选择商家' : '暂无可用商家'
     return
@@ -841,14 +859,14 @@ async function loadProfitSpace() {
   profitLoading.value = true
   profitError.value = ''
   try {
-    const data = await merchantApi.profitSpace(merchantId, {
+    const data = await merchantApi.profitSpace(platformMerchantId, {
       consumptionAmount: amount
     })
     profitData.value = {
       ...mapProfitSpaceDisplay(data),
       merchantName: data.merchantName
         || data.platformMerchantName
-        || profitMerchantOptions.value.find(m => m.id === merchantId)?.name
+        || profitMerchantOptions.value.find(m => m.id === platformMerchantId)?.name
         || '—',
       propertyName: data.propertyName || selectedPropertyName()
     }
@@ -870,10 +888,12 @@ async function onViewModeChange(mode: string) {
   } else {
     await loadMerchants(1)
   }
-  if (profitMerchantOptions.value.length) {
-    selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
+  if (isPlatformAdmin.value) {
+    if (profitMerchantOptions.value.length) {
+      selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
+    }
+    await loadProfitSpace()
   }
-  await loadProfitSpace()
 }
 
 function applyFilters() {
@@ -1146,10 +1166,12 @@ onMounted(async () => {
   try {
     await loadPropertyCompanies()
     await loadMerchants(1)
-    if (!selectedProfitMerchantId.value && profitMerchantOptions.value.length) {
-      selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
+    if (isPlatformAdmin.value) {
+      if (!selectedProfitMerchantId.value && profitMerchantOptions.value.length) {
+        selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
+      }
+      await loadProfitSpace()
     }
-    await loadProfitSpace()
   } finally {
     loading.value = false
   }

@@ -234,7 +234,7 @@ export function mapResidents(list: ResidentItem[]) {
 
 export function resolvePlatformMerchantId(item: MerchantItem): string | null {
   if (item.platformMerchantId) return item.platformMerchantId
-  if (item.id.startsWith('pm_')) return item.id
+  if (item.id.startsWith('pm_') || item.id.startsWith('mch_')) return item.id
   return null
 }
 

@@ -281,11 +281,11 @@ export const merchantApi = {
   },
 
   profitSpace(
-    merchantId: string,
+    platformMerchantId: string,
     params: { consumptionAmount: number }
   ) {
     return request<MerchantProfitSpace>(
-      `/admin/merchants/${merchantId}/profit-space${buildQuery({
+      `/admin/platform-merchants/${platformMerchantId}/profit-space${buildQuery({
         consumptionAmount: params.consumptionAmount
       })}`
     )
