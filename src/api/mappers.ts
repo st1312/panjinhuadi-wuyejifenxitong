@@ -255,8 +255,7 @@ export function mapPointsUsers(list: ResidentItem[]) {
       points: `${formatMoney(item.pointBalance)} pts`,
       pcoin: `${formatMoney(item.coinBalance)} PCoin`,
       coinBalance: item.coinBalance ?? 0,
-      frozenRecordId: undefined as string | undefined,
-      status: item.coinFrozen || item.status === RESIDENT_STATUS.FROZEN || item.status === RESIDENT_STATUS.DISABLED
+      status: item.status === RESIDENT_STATUS.FROZEN || item.status === RESIDENT_STATUS.DISABLED
         ? 'frozen' as const
         : 'normal' as const
     }

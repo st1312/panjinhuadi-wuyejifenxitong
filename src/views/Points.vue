@@ -89,8 +89,13 @@
               </td>
               <td>
                 <div class="actions">
-                  <button class="detail">详情</button>
-                  <button class="toggle" :class="user.status === 'normal' ? 'freeze' : 'unfreeze'">
+                  <button type="button" class="detail" @click="openDetailModal(user)">详情</button>
+                  <button
+                    type="button"
+                    class="toggle"
+                    :class="user.status === 'normal' ? 'freeze' : 'unfreeze'"
+                    @click="openStatusModal(user, user.status === 'normal' ? 'freeze' : 'unfreeze')"
+                  >
                     {{ user.status === 'normal' ? '冻结' : '解冻' }}
                   </button>
                 </div>
@@ -151,6 +156,65 @@
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="detailModalOpen" class="modalOverlay" @click.self="closeDetailModal">
+        <div class="modal modalWide modalScroll">
+          <div class="modalHeader">
+            <h3 class="modalTitle">用户资产详情</h3>
+            <button type="button" class="modalClose" @click="closeDetailModal">&times;</button>
+          </div>
+          <div class="modalBody">
+            <div v-if="detailLoading" class="loadingText">加载中...</div>
+            <div v-else-if="detailRows.length" class="detailGrid">
+              <div v-for="row in detailRows" :key="row.label" class="detailItem">
+                <span class="detailLabel">{{ row.label }}</span>
+                <span class="detailValue">{{ row.value }}</span>
+              </div>
+            </div>
+            <p v-if="detailError" class="error">{{ detailError }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="closeDetailModal">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="statusModal" class="modalOverlay" @click.self="closeStatusModal">
+        <div class="modal">
+          <div class="modalHeader">
+            <h3 class="modalTitle">{{ statusModal === 'freeze' ? '冻结账号' : '解冻账号' }}</h3>
+            <button type="button" class="modalClose" @click="closeStatusModal">&times;</button>
+          </div>
+          <form class="modalBody" @submit.prevent="submitStatusModal">
+            <div class="field">
+              <label class="label">用户</label>
+              <div class="readonly">{{ statusTargetUser?.name }} · {{ statusTargetUser?.room }}</div>
+            </div>
+            <div class="field">
+              <label class="label">操作原因</label>
+              <textarea
+                v-model="statusForm.reason"
+                class="textarea"
+                rows="3"
+                maxlength="200"
+                :placeholder="statusModal === 'freeze' ? '选填，如：异常登录' : '选填，如：问题已核实'"
+              />
+            </div>
+            <p v-if="statusError" class="error">{{ statusError }}</p>
+            <p v-if="statusSuccess" class="success">{{ statusSuccess }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="closeStatusModal">取消</button>
+              <button type="submit" class="btnPrimary" :disabled="statusSubmitting">
+                {{ statusSubmitting ? '提交中...' : '确认' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </AppLayout>
 </template>
 
@@ -161,10 +225,14 @@ import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
 import { dashboardApi, pointApi, residentApi } from '../api/services'
-import { mapPointPoolOverview, mapPointsOverview, mapPointsUsers } from '../api/mappers'
-import { RESIDENT_STATUS } from '../constants/enums'
+import { formatMoney, mapPointPoolOverview, mapPointsOverview, mapPointsUsers } from '../api/mappers'
+import { getEnumLabel, RESIDENT_STATUS, RESIDENT_STATUS_LABEL } from '../constants/enums'
+import { ApiError } from '../api/request'
+import type { ResidentItem } from '../api/types'
 
 const PAGE_SIZE = 20
+type PointsUser = ReturnType<typeof mapPointsUsers>[number]
+type StatusModalType = 'freeze' | 'unfreeze'
 
 const loading = ref(true)
 const poolLoading = ref(true)
@@ -187,6 +255,36 @@ const searchKeyword = ref('')
 const appliedKeyword = ref('')
 
 let searchTimer: ReturnType<typeof setTimeout>
+
+const detailModalOpen = ref(false)
+const detailLoading = ref(false)
+const detailError = ref('')
+const detailData = ref<ResidentItem | null>(null)
+
+const statusModal = ref<StatusModalType | null>(null)
+const statusTargetUser = ref<PointsUser | null>(null)
+const statusSubmitting = ref(false)
+const statusError = ref('')
+const statusSuccess = ref('')
+const statusForm = ref({ reason: '' })
+
+const detailRows = computed(() => {
+  const d = detailData.value
+  if (!d) return []
+  return [
+    { label: '姓名', value: d.name || '—' },
+    { label: '手机号', value: d.phone || '—' },
+    { label: '房号', value: [d.building, d.unit, d.room].filter(Boolean).join(' ') || '—' },
+    { label: '账户状态', value: getEnumLabel(RESIDENT_STATUS_LABEL, d.status) },
+    { label: '物业币状态', value: d.coinFrozen ? '已冻结' : '正常' },
+    { label: '积分余额', value: `${formatMoney(d.pointBalance)} pts` },
+    { label: '物业币余额', value: `${formatMoney(d.coinBalance)} PCoin` },
+    { label: '累计消费', value: d.totalConsumption !== undefined ? `¥${formatMoney(d.totalConsumption)}` : '—' },
+    { label: '累计订单', value: d.totalOrders !== undefined ? String(d.totalOrders) : '—' },
+    { label: '注册时间', value: d.createdAt || '—' },
+    { label: '更新时间', value: d.updatedAt || '—' }
+  ]
+})
 
 const trendData = ref<Array<{ week: string; value: number; label: string; active: boolean }>>([
   { week: 'W1', value: 30, label: '', active: false }
@@ -246,6 +344,71 @@ function submitSearch() {
 function onSearchInput() {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(submitSearch, 300)
+}
+
+function resolveErrorMessage(e: unknown) {
+  if (e instanceof ApiError) return e.message
+  if (e instanceof Error) return e.message
+  return '操作失败，请稍后重试'
+}
+
+async function openDetailModal(user: PointsUser) {
+  detailError.value = ''
+  detailData.value = null
+  detailModalOpen.value = true
+  detailLoading.value = true
+  try {
+    detailData.value = await residentApi.get(user.id)
+  } catch (e) {
+    detailError.value = resolveErrorMessage(e)
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function closeDetailModal() {
+  detailModalOpen.value = false
+  detailData.value = null
+  detailError.value = ''
+}
+
+function openStatusModal(user: PointsUser, type: StatusModalType) {
+  statusTargetUser.value = user
+  statusModal.value = type
+  statusForm.value = { reason: '' }
+  statusError.value = ''
+  statusSuccess.value = ''
+}
+
+function closeStatusModal() {
+  statusModal.value = null
+  statusTargetUser.value = null
+  statusForm.value = { reason: '' }
+  statusError.value = ''
+  statusSuccess.value = ''
+}
+
+async function submitStatusModal() {
+  const user = statusTargetUser.value
+  if (!user || !statusModal.value) return
+
+  statusSubmitting.value = true
+  statusError.value = ''
+  statusSuccess.value = ''
+
+  try {
+    await residentApi.updateStatus(user.id, {
+      status: statusModal.value === 'freeze' ? RESIDENT_STATUS.FROZEN : RESIDENT_STATUS.ACTIVE,
+      reason: statusForm.value.reason.trim() || undefined
+    })
+    statusSuccess.value = statusModal.value === 'freeze' ? '账号已冻结' : '账号已解冻'
+    await loadUsers(currentPage.value)
+    setTimeout(closeStatusModal, 1500)
+  } catch (e) {
+    statusError.value = resolveErrorMessage(e)
+  } finally {
+    statusSubmitting.value = false
+  }
 }
 
 watch(activeTab, () => {
@@ -384,7 +547,7 @@ const segments = computed(() => {
 .assetTable .status.frozen::before { background: #e05c5c; }
 .assetTable .status.frozen { color: #e05c5c; }
 .assetTable .actions { display: flex; align-items: center; gap: 16px; }
-.assetTable .detail { font-size: 14px; color: #5c5c9e; }
+.assetTable .detail { font-size: 14px; color: #5c5c9e; cursor: pointer; background: transparent; border: none; }
 .assetTable .toggle { font-size: 14px; cursor: pointer; background: transparent; border: none; }
 .assetTable .toggle.freeze { color: #e05c5c; }
 .assetTable .toggle.unfreeze { color: #5c5c9e; }
@@ -435,5 +598,111 @@ const segments = computed(() => {
   .assetTable .header { flex-direction: column; align-items: flex-start; }
   .assetTable .titleWrap { flex-direction: column; align-items: flex-start; }
   .assetTable .toolbar { width: 100%; }
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+.modalWide { max-width: 720px; }
+.modalScroll { max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.modalScroll .modalBody { overflow-y: auto; }
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f3;
+}
+.modalTitle { font-size: 16px; font-weight: 600; color: #1f1f2e; margin: 0; }
+.modalClose {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: #8c8c9a;
+  cursor: pointer;
+}
+.modalClose:hover { color: #1f1f2e; }
+.modalBody { padding: 24px; }
+.field { margin-bottom: 16px; }
+.field .label { display: block; font-size: 13px; font-weight: 500; color: #5c5c66; margin-bottom: 8px; }
+.field .input,
+.field .textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e8e8ec;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f1f2e;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+}
+.field .input:focus,
+.field .textarea:focus { border-color: #5c5c9e; }
+.field .textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+.field .hint { font-size: 12px; color: #8c8c9a; margin-top: 6px; }
+.readonly {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fafafc;
+  font-size: 14px;
+  color: #1f1f2e;
+}
+.error { font-size: 13px; color: #e05c5c; margin-bottom: 12px; }
+.success { font-size: 13px; color: #3aaf7d; margin-bottom: 12px; }
+.loadingText { text-align: center; color: #8c8c9a; padding: 24px 0; }
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+  margin-bottom: 8px;
+}
+.detailItem { display: flex; flex-direction: column; gap: 4px; }
+.detailLabel { font-size: 12px; color: #8c8c9a; }
+.detailValue { font-size: 14px; color: #1f1f2e; word-break: break-all; }
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+.btnSecondary {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid #e8e8ec;
+  background: #ffffff;
+  color: #5c5c66;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btnPrimary {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  background: #5c5c9e;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .detailGrid { grid-template-columns: 1fr; }
 }
 </style>
