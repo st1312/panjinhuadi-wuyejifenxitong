@@ -413,7 +413,7 @@ export const configApi = {
 
 export const permissionApi = {
 
-  users(params: { keyword?: string } = {}) {
+  users(params: { keyword?: string; page?: number; pageSize?: number } = {}) {
     return request<{ accounts: AdminUserAccount[]; total: number }>(
       `/admin/users${buildQuery(params)}`
     )

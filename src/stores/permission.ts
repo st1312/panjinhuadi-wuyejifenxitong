@@ -50,8 +50,13 @@ export interface Log {
 }
 
 export const usePermissionStore = defineStore('permission', () => {
+  const ACCOUNT_PAGE_SIZE = 20
+
   const roleList = ref<RolePreset[]>([])
   const accountList = ref<Account[]>([])
+  const accountTotal = ref(0)
+  const accountPage = ref(1)
+  const accountsLoadingMore = ref(false)
   const permissionList = ref<PermissionCategory[]>([])
   const permissionPool = ref<PermissionItemDto[]>([])
   const logList = ref<Log[]>([])
@@ -82,9 +87,36 @@ export const usePermissionStore = defineStore('permission', () => {
     logList.value = mapPermissionChangeLogs(logs.list || [])
   }
 
-  async function loadAccounts(keyword = '') {
-    const res = await permissionApi.users({ keyword: keyword || undefined })
-    accountList.value = mapAdminUserAccounts(res.accounts || [])
+  async function loadAccounts(keyword = '', page = 1, append = false) {
+    if (append) {
+      accountsLoadingMore.value = true
+    }
+    const res = await permissionApi.users({
+      keyword: keyword || undefined,
+      page,
+      pageSize: ACCOUNT_PAGE_SIZE
+    })
+    const mapped = mapAdminUserAccounts(res.accounts || [])
+    accountTotal.value = res.total ?? mapped.length
+    accountPage.value = page
+    if (append) {
+      accountList.value = [...accountList.value, ...mapped]
+    } else {
+      accountList.value = mapped
+    }
+    if (append) {
+      accountsLoadingMore.value = false
+    }
+  }
+
+  async function loadMoreAccounts(keyword = '') {
+    if (accountsLoadingMore.value || loading.value) return
+    if (accountList.value.length >= accountTotal.value) return
+    try {
+      await loadAccounts(keyword, accountPage.value + 1, true)
+    } catch (e) {
+      error.value = e instanceof ApiError ? e.message : '账号加载失败'
+    }
   }
 
   async function load() {
@@ -219,6 +251,8 @@ export const usePermissionStore = defineStore('permission', () => {
   return {
     roleList,
     accountList,
+    accountTotal,
+    accountsLoadingMore,
     permissionList,
     logList,
     activeAccount,
@@ -230,6 +264,7 @@ export const usePermissionStore = defineStore('permission', () => {
     saveMessage,
     load,
     searchAccounts,
+    loadMoreAccounts,
     selectAccount,
     applyPreset,
     togglePermission,

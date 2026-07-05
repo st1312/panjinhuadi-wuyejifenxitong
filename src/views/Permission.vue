@@ -27,19 +27,21 @@
 
       <div v-else class="main">
         <section class="accountList">
-          <h3 class="sectionTitle">账号列表</h3>
-          <div class="accountSearch">
-            <IconSvg name="search" class="searchIcon" />
-            <input
-              v-model="accountKeyword"
-              type="search"
-              placeholder="搜索姓名/手机号..."
-              @keydown.enter="searchAccounts(accountKeyword)"
-              @input="onAccountSearchInput"
-            />
+          <div class="accountListHead">
+            <h3 class="sectionTitle">账号列表</h3>
+            <div class="accountSearch">
+              <IconSvg name="search" class="searchIcon" />
+              <input
+                v-model="accountKeyword"
+                type="search"
+                placeholder="搜索姓名/手机号..."
+                @keydown.enter="searchAccounts(accountKeyword)"
+                @input="onAccountSearchInput"
+              />
+            </div>
           </div>
-          <div v-if="!accountList.length" class="emptyHint">暂无账号</div>
-          <div v-else class="items">
+          <div v-if="!accountList.length && !loading" class="emptyHint panelScroll">暂无账号</div>
+          <div v-else class="items panelScroll" @scroll="onAccountListScroll">
             <div
               v-for="account in accountList"
               :key="account.id"
@@ -54,7 +56,10 @@
                 <div class="meta">{{ account.phone }} · {{ account.permissionCount }} 项权限</div>
               </div>
             </div>
+            <div v-if="accountsLoadingMore" class="loadMoreHint">加载更多...</div>
+            <div v-else-if="accountList.length < accountTotal" class="loadMoreHint muted">下划加载更多账号</div>
           </div>
+          <div class="accountListFooter" aria-hidden="true" />
         </section>
 
         <section class="config">
@@ -73,8 +78,8 @@
             </div>
           </div>
 
-          <div v-if="!activeAccount" class="emptyConfig">选择账号后可配置权限</div>
-          <div v-else class="body">
+          <div v-if="!activeAccount" class="emptyConfig panelScroll">选择账号后可配置权限</div>
+          <div v-else class="body panelScroll">
             <div v-for="group in filteredGroups" :key="group.category" class="group">
               <h4 class="groupTitle">{{ group.category }}</h4>
               <div class="items">
@@ -150,6 +155,8 @@ const {
   permissionList,
   logList,
   accountList,
+  accountTotal,
+  accountsLoadingMore,
   activeAccount,
   roleList,
   activePresetId,
@@ -166,6 +173,7 @@ const {
   applyPreset,
   selectAccount,
   searchAccounts,
+  loadMoreAccounts,
   load
 } = store
 
@@ -193,6 +201,13 @@ function onAccountSearchInput() {
   accountSearchTimer = setTimeout(() => searchAccounts(accountKeyword.value.trim()), 300)
 }
 
+function onAccountListScroll(event: Event) {
+  const el = event.target as HTMLElement
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 48) {
+    loadMoreAccounts(accountKeyword.value.trim())
+  }
+}
+
 onMounted(() => {
   load()
 })
@@ -202,7 +217,20 @@ onMounted(() => {
 .page { max-width: 1200px; }
 .page > .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .page > .desc { font-size: 14px; color: #8c8c9a; margin-bottom: 24px; }
-.main { display: flex; gap: 24px; margin-bottom: 24px; align-items: stretch; }
+.main {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  align-items: stretch;
+  --panel-scroll-height: 520px;
+  --config-footer-height: 73px;
+}
+.panelScroll {
+  height: var(--panel-scroll-height);
+  max-height: var(--panel-scroll-height);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
 .loadingBlock, .emptyHint, .emptyConfig, .emptyCell { text-align: center; color: #8c8c9a; padding: 24px; font-size: 14px; }
 .error { color: #e05c5c; font-size: 14px; margin-bottom: 16px; }
 .success { color: #3aaf7d; font-size: 13px; margin-bottom: 12px; }
@@ -217,12 +245,27 @@ onMounted(() => {
 .rolePreset .btn:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .rolePreset .btn.active { background: #5c5c9e; border-color: #5c5c9e; color: #ffffff; }
 
-.accountList { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); width: 280px; flex-shrink: 0; align-self: flex-start; }
-.accountList .sectionTitle { margin-bottom: 12px; }
-.accountSearch { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; margin-bottom: 12px; }
+.accountList {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.accountList .sectionTitle { margin-bottom: 12px; flex-shrink: 0; }
+.accountListHead { min-height: 88px; flex-shrink: 0; margin-bottom: 0; }
+.accountSearch { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; flex-shrink: 0; }
 .accountSearch .searchIcon { width: 16px; height: 16px; color: #8c8c9a; }
 .accountSearch input { flex: 1; border: none; background: transparent; font-size: 13px; outline: none; }
-.accountList .items { display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto; }
+.accountList .emptyHint { display: flex; align-items: center; justify-content: center; }
+.accountList .items { display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.loadMoreHint { text-align: center; font-size: 12px; color: #8c8c9a; padding: 8px 0 4px; }
+.loadMoreHint.muted { color: #b0b0b9; }
+.accountListFooter { flex-shrink: 0; height: var(--config-footer-height); }
 .accountList .item { display: flex; align-items: center; padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
 .accountList .item:hover { background: #f4f5f7; }
 .accountList .item.active { background: #5c5c9e; }
@@ -235,13 +278,24 @@ onMounted(() => {
 .accountList .meta { font-size: 11px; color: #b0b0b9; margin-top: 2px; }
 .accountList .item.active .meta { color: rgba(255,255,255,0.7); }
 
-.config { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 420px; }
-.config .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.config { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.config .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-shrink: 0; min-height: 88px; box-sizing: border-box; }
 .config .search { display: flex; align-items: center; width: 220px; height: 36px; border: 1px solid #e8e8ec; border-radius: 8px; padding: 0 12px; background: #ffffff; flex-shrink: 0; }
 .config .search:focus-within { border-color: #5c5c9e; }
 .config .searchIcon { width: 16px; height: 16px; color: #8c8c9a; margin-right: 8px; }
 .config .search input { flex: 1; font-size: 14px; color: #1f1f2e; border: none; outline: none; background: transparent; }
-.config .body { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; min-height: 260px; overflow-y: auto; }
+.config .body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  padding-right: 4px;
+  align-content: start;
+}
+.config .emptyConfig {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .config .group { display: flex; flex-direction: column; gap: 12px; }
 .config .groupTitle { font-size: 14px; font-weight: 500; color: #5c5c66; margin-bottom: 4px; }
 .config .items { display: flex; flex-direction: column; gap: 10px; }
@@ -255,7 +309,7 @@ onMounted(() => {
 .permText .name { font-size: 14px; color: #1f1f2e; }
 .permText .desc { font-size: 12px; color: #8c8c9a; }
 .permText .code { font-size: 11px; color: #b0b0b9; font-family: monospace; }
-.config .footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f3; }
+.config .footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 20px; border-top: 1px solid #f0f0f3; flex-shrink: 0; min-height: var(--config-footer-height); box-sizing: border-box; align-items: center; }
 .btnReset { padding: 10px 20px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .btnReset:disabled { opacity: 0.5; cursor: not-allowed; }
 .btnSave { display: flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; background: #5c5c9e; color: #ffffff; font-size: 14px; border: none; cursor: pointer; }
