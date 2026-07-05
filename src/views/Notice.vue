@@ -3,12 +3,27 @@
     <div class="page">
       <div class="header">
         <div>
-          <h1 class="title">通告发布</h1>
+          <h1 class="title">{{ editingId ? '编辑通告' : '通告发布' }}</h1>
           <p class="desc">发布新的物业通告或查看历史发布记录</p>
         </div>
         <div class="actions">
-          <button class="btnSecondary">存为草稿</button>
-          <button class="btnPrimary"><IconSvg name="play" /><span>立即发布</span></button>
+          <button
+            type="button"
+            class="btnSecondary"
+            :disabled="formSubmitting"
+            @click="submitForm(ANNOUNCEMENT_STATUS.DRAFT)"
+          >
+            {{ formSubmitting ? '保存中...' : '存为草稿' }}
+          </button>
+          <button
+            type="button"
+            class="btnPrimary"
+            :disabled="formSubmitting"
+            @click="submitForm(ANNOUNCEMENT_STATUS.PUBLISHED)"
+          >
+            <IconSvg name="play" />
+            <span>{{ formSubmitting ? '发布中...' : '立即发布' }}</span>
+          </button>
         </div>
       </div>
       <div class="grid">
@@ -19,28 +34,31 @@
           </div>
           <div class="form">
             <div class="field">
-              <label class="label">发布身份</label>
-              <div class="select">
-                <span>物业管理处</span>
-                <IconSvg name="chevronDown" />
-              </div>
+              <label class="label">公告类型</label>
+              <select v-model="form.announcementType" class="input">
+                <option v-for="opt in ANNOUNCEMENT_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
             </div>
             <div class="field">
               <label class="label">通告标题</label>
-              <input type="text" class="input" placeholder="输入简洁明了的通告标题" />
+              <input
+                v-model="form.title"
+                type="text"
+                class="input"
+                maxlength="200"
+                placeholder="输入简洁明了的通告标题"
+              />
             </div>
             <div class="field">
               <label class="label">详细内容</label>
-              <div class="editor">
-                <div class="toolbar">
-                  <button class="btn active">B</button>
-                  <button class="btn">I</button>
-                  <button class="btn">☰</button>
-                  <button class="btn">▢</button>
-                  <button class="btn">🔗</button>
-                </div>
-                <textarea class="content" placeholder="在此输入通告正文..."></textarea>
-              </div>
+              <textarea
+                v-model="form.content"
+                class="contentInput"
+                rows="8"
+                placeholder="在此输入通告正文..."
+              />
             </div>
           </div>
         </div>
@@ -54,58 +72,66 @@
               <label class="label">覆盖楼栋</label>
               <div class="checkboxGroup">
                 <label class="checkbox">
-                  <input type="checkbox" checked />
-                  <span class="checkmark"><IconSvg name="check" /></span>
-                  <span>全部</span>
+                  <input v-model="selectAllBuildings" type="checkbox" @change="onSelectAllBuildings" />
+                  <span class="checkmark"><IconSvg v-if="selectAllBuildings" name="check" /></span>
+                  <span>全部楼栋</span>
                 </label>
-                <label v-for="b in ['A栋','B栋','C栋','D栋','商铺']" :key="b" class="checkbox">
-                  <input type="checkbox" />
-                  <span class="checkmark"></span>
-                  <span>{{ b }}</span>
+                <label
+                  v-for="building in buildingOptions"
+                  :key="building"
+                  class="checkbox"
+                  :class="{ disabled: selectAllBuildings }"
+                >
+                  <input
+                    v-model="form.selectedBuildings"
+                    type="checkbox"
+                    :value="building"
+                    :disabled="selectAllBuildings"
+                  />
+                  <span class="checkmark">
+                    <IconSvg v-if="form.selectedBuildings.includes(building)" name="check" />
+                  </span>
+                  <span>{{ building }}</span>
                 </label>
               </div>
+              <p v-if="!buildingOptions.length" class="hint">暂无楼栋数据，将默认覆盖全部楼栋</p>
             </div>
             <div class="field">
-              <div class="rangeHeader">
-                <label class="label">目标年龄段</label>
-                <span class="value">18 - 65 岁</span>
-              </div>
-              <div class="slider">
-                <div class="track"></div>
-                <div class="thumb" style="left: 0%"></div>
-                <div class="thumb" style="left: 100%"></div>
-              </div>
-              <div class="inputs">
-                <input type="number" class="input" value="18" />
-                <span>至</span>
-                <input type="number" class="input" value="65" />
-              </div>
-            </div>
-            <div class="field">
-              <label class="label">目标性别</label>
-              <div class="genderGroup">
-                <button class="btn active">不限</button>
-                <button class="btn">男</button>
-                <button class="btn">女</button>
-              </div>
+              <label class="checkbox inline">
+                <input v-model="form.collectEnabled" type="checkbox" />
+                <span class="checkmark"><IconSvg v-if="form.collectEnabled" name="check" /></span>
+                <span>启用信息收集（如停水储水登记）</span>
+              </label>
             </div>
             <div class="infoBox">
               <IconSvg name="info" />
-              <span>基于当前设置，通告预计将覆盖 <strong>1,248</strong> 名住户。建议在大数据高峰时段发布以获得更高点击率。</span>
+              <span>
+                当前将覆盖
+                <strong>{{ coverageText }}</strong>
+                。草稿可在下方列表继续编辑发布。
+              </span>
             </div>
           </div>
         </div>
       </div>
+      <p v-if="formError" class="formError">{{ formError }}</p>
+      <p v-if="formSuccess" class="formSuccess">{{ formSuccess }}</p>
+
       <div class="history">
         <div class="head">
           <div class="header">
             <IconSvg name="history" class="icon" />
             <span>已发布列表</span>
           </div>
-          <div class="search">
+          <form class="search" @submit.prevent="submitSearch">
             <IconSvg name="search" />
-            <input type="text" placeholder="搜索通告标题..." />
-          </div>
+            <input
+              v-model="searchKeyword"
+              type="search"
+              placeholder="搜索通告标题..."
+              @input="onSearchInput"
+            />
+          </form>
         </div>
         <table class="table">
           <thead>
@@ -121,62 +147,458 @@
             <tr v-if="loading">
               <td colspan="5" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
             </tr>
-            <template v-else>
-            <tr v-for="notice in notices" :key="notice.id">
-              <td>{{ notice.publishTime }}</td>
-              <td>
-                <div class="cellTitle">{{ notice.title }}</div>
-                <div class="cellPublisher">发布人：{{ notice.publisher }}</div>
-              </td>
-              <td>
-                <div class="scope">
-                  <span v-for="(item, index) in notice.scope" :key="index" class="tag">{{ item }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="status" :class="notice.status === 'published' ? 'published' : 'withdrawn'">
-                  {{ notice.status === 'published' ? '已发布' : '已撤回' }}
-                </span>
-              </td>
-              <td><button class="detail">查看详情</button></td>
+            <tr v-else-if="!filteredNotices.length">
+              <td colspan="5" style="text-align:center;padding:24px;color:#8c8c9a">暂无通告</td>
             </tr>
+            <template v-else>
+              <tr v-for="notice in filteredNotices" :key="notice.id">
+                <td>{{ notice.publishTime }}</td>
+                <td>
+                  <div class="cellTitle">{{ notice.title }}</div>
+                  <div class="cellPublisher">{{ notice.announcementTypeLabel }} · 发布人：{{ notice.publisher }}</div>
+                </td>
+                <td>
+                  <div class="scope">
+                    <span v-for="(item, index) in notice.scope" :key="index" class="tag">{{ item }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="status" :class="statusClass(notice.status)">{{ notice.statusLabel }}</span>
+                </td>
+                <td>
+                  <div class="rowActions">
+                    <button type="button" class="detail" @click="openDetailModal(notice.id)">详情</button>
+                    <button
+                      v-if="notice.status !== ANNOUNCEMENT_STATUS.ARCHIVED"
+                      type="button"
+                      class="detail"
+                      @click="startEdit(notice.id)"
+                    >
+                      编辑
+                    </button>
+                    <button
+                      v-if="notice.status !== ANNOUNCEMENT_STATUS.ARCHIVED"
+                      type="button"
+                      class="danger"
+                      @click="openDeleteModal(notice.id, notice.title)"
+                    >
+                      删除
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </template>
           </tbody>
         </table>
         <div class="footer">
-          <span class="total">显示第 1 至 {{ notices.length }} 条，共 {{ noticesTotal }} 条记录</span>
-          <div class="pagination">
-            <button class="pageBtn" disabled>&lt;</button>
-            <button class="pageBtn active">1</button>
-            <button class="pageBtn">2</button>
-            <button class="pageBtn">3</button>
-            <button class="pageBtn">&gt;</button>
+          <span class="total">显示 {{ pageStart }} 到 {{ pageEnd }}，共 {{ noticesTotal.toLocaleString() }} 条记录</span>
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="pageBtn" :disabled="currentPage <= 1 || loading" @click="changePage(currentPage - 1)">&lt;</button>
+            <span class="pageInfo">{{ currentPage }} / {{ totalPages }}</span>
+            <button class="pageBtn" :disabled="currentPage >= totalPages || loading" @click="changePage(currentPage + 1)">&gt;</button>
           </div>
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="detailModalOpen" class="modalOverlay" @click.self="closeDetailModal">
+        <div class="modal modalWide modalScroll">
+          <div class="modalHeader">
+            <h3 class="modalTitle">通告详情</h3>
+            <button type="button" class="modalClose" @click="closeDetailModal">&times;</button>
+          </div>
+          <div class="modalBody">
+            <div v-if="detailLoading" class="loadingText">加载中...</div>
+            <div v-else-if="detailRows.length" class="detailGrid">
+              <div v-for="row in detailRows" :key="row.label" class="detailItem">
+                <span class="detailLabel">{{ row.label }}</span>
+                <span class="detailValue">{{ row.value }}</span>
+              </div>
+              <div v-if="detailData?.content" class="detailContent">
+                <span class="detailLabel">正文内容</span>
+                <p class="detailValue content">{{ detailData.content }}</p>
+              </div>
+            </div>
+            <p v-if="detailError" class="error">{{ detailError }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="closeDetailModal">关闭</button>
+              <button
+                v-if="detailData && detailData.status !== ANNOUNCEMENT_STATUS.ARCHIVED"
+                type="button"
+                class="btnPrimary"
+                @click="startEdit(detailData.id); closeDetailModal()"
+              >
+                编辑
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="deleteModalOpen" class="modalOverlay" @click.self="closeDeleteModal">
+        <div class="modal">
+          <div class="modalHeader">
+            <h3 class="modalTitle">删除通告</h3>
+            <button type="button" class="modalClose" @click="closeDeleteModal">&times;</button>
+          </div>
+          <div class="modalBody">
+            <p class="confirmText">确定删除通告「{{ deleteTargetTitle }}」吗？删除后将归档，不可恢复展示。</p>
+            <p v-if="deleteError" class="error">{{ deleteError }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="closeDeleteModal">取消</button>
+              <button type="button" class="btnDanger" :disabled="deleteSubmitting" @click="submitDelete">
+                {{ deleteSubmitting ? '删除中...' : '确认删除' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
-import { announcementApi } from '../api/services'
+import { announcementApi, residentApi } from '../api/services'
 import { mapAnnouncements } from '../api/mappers'
+import { ApiError } from '../api/request'
+import type { AnnouncementCreatePayload, AnnouncementItem, AnnouncementUpdatePayload, ResidentItem } from '../api/types'
+import { useAuthStore } from '../stores/auth'
+import {
+  ANNOUNCEMENT_STATUS,
+  ANNOUNCEMENT_STATUS_LABEL,
+  ANNOUNCEMENT_TYPE,
+  ANNOUNCEMENT_TYPE_LABEL,
+  ANNOUNCEMENT_TYPE_OPTIONS,
+  getEnumLabel
+} from '../constants/enums'
+
+const PAGE_SIZE = 20
+const DEFAULT_COMMUNITY_ID = import.meta.env.VITE_COMMUNITY_ID || 'com_demo001'
+
+const authStore = useAuthStore()
 
 const loading = ref(true)
+const formSubmitting = ref(false)
+const formError = ref('')
+const formSuccess = ref('')
+const editingId = ref('')
+
+const form = ref<{
+  title: string
+  content: string
+  announcementType: string
+  selectedBuildings: string[]
+  collectEnabled: boolean
+}>({
+  title: '',
+  content: '',
+  announcementType: ANNOUNCEMENT_TYPE.PROPERTY,
+  selectedBuildings: [] as string[],
+  collectEnabled: false
+})
+const selectAllBuildings = ref(true)
+const buildingOptions = ref<string[]>([])
+
 const notices = ref<ReturnType<typeof mapAnnouncements>>([])
 const noticesTotal = ref(0)
+const currentPage = ref(1)
+const totalPages = ref(1)
+const searchKeyword = ref('')
+let searchTimer: ReturnType<typeof setTimeout>
 
-onMounted(async () => {
+const filteredNotices = computed(() => {
+  const q = searchKeyword.value.trim().toLowerCase()
+  if (!q) return notices.value
+  return notices.value.filter(item => item.title.toLowerCase().includes(q))
+})
+
+const detailModalOpen = ref(false)
+const detailLoading = ref(false)
+const detailError = ref('')
+const detailData = ref<AnnouncementItem | null>(null)
+
+const deleteModalOpen = ref(false)
+const deleteTargetId = ref('')
+const deleteTargetTitle = ref('')
+const deleteSubmitting = ref(false)
+const deleteError = ref('')
+
+const coverageText = computed(() => {
+  if (selectAllBuildings.value || !form.value.selectedBuildings.length) return '全部楼栋'
+  return form.value.selectedBuildings.join('、')
+})
+
+const pageStart = computed(() => {
+  if (!noticesTotal.value) return 0
+  return (currentPage.value - 1) * PAGE_SIZE + 1
+})
+
+const pageEnd = computed(() => Math.min(currentPage.value * PAGE_SIZE, noticesTotal.value))
+
+const detailRows = computed(() => {
+  const d = detailData.value
+  if (!d) return []
+  return [
+    { label: '标题', value: d.title || '—' },
+    { label: '公告类型', value: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, d.announcementType) },
+    { label: '状态', value: getEnumLabel(ANNOUNCEMENT_STATUS_LABEL, d.status) },
+    { label: '覆盖楼栋', value: d.targetBuildings?.length ? d.targetBuildings.join('、') : '全部楼栋' },
+    { label: '信息收集', value: d.collectEnabled ? '已启用' : '未启用' },
+    { label: '发布时间', value: d.publishedAt || '—' },
+    { label: '创建时间', value: d.createdAt || '—' },
+    { label: '更新时间', value: d.updatedAt || '—' }
+  ]
+})
+
+function statusClass(status?: string) {
+  if (status === ANNOUNCEMENT_STATUS.PUBLISHED) return 'published'
+  if (status === ANNOUNCEMENT_STATUS.ARCHIVED) return 'archived'
+  return 'draft'
+}
+
+function resolveErrorMessage(e: unknown) {
+  if (e instanceof ApiError) return e.message
+  if (e instanceof Error) return e.message
+  return '操作失败，请稍后重试'
+}
+
+function onSelectAllBuildings() {
+  if (selectAllBuildings.value) {
+    form.value.selectedBuildings = []
+  }
+}
+
+watch(
+  () => form.value.selectedBuildings,
+  (buildings) => {
+    if (buildings.length > 0) selectAllBuildings.value = false
+  },
+  { deep: true }
+)
+
+function collectBuildings(list: ResidentItem[]) {
+  const set = new Set(buildingOptions.value)
+  list.forEach(item => {
+    if (item.building) set.add(item.building)
+  })
+  buildingOptions.value = Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+}
+
+async function loadBuildingOptions() {
   try {
-    const res = await announcementApi.list({ page: 1, pageSize: 20 })
+    const res = await residentApi.list({
+      page: 1,
+      pageSize: 100,
+      propertyCompanyId: authStore.propertyCompanyId || undefined
+    })
+    collectBuildings(res.list || [])
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function buildTargetBuildings() {
+  if (selectAllBuildings.value || !form.value.selectedBuildings.length) return undefined
+  return [...form.value.selectedBuildings]
+}
+
+function buildCreatePayload(status: string): AnnouncementCreatePayload {
+  const payload: AnnouncementCreatePayload = {
+    title: form.value.title.trim(),
+    content: form.value.content.trim(),
+    announcementType: form.value.announcementType,
+    status,
+    collectEnabled: form.value.collectEnabled || undefined
+  }
+  const buildings = buildTargetBuildings()
+  if (buildings?.length) payload.targetBuildings = buildings
+  if (authStore.propertyCompanyId) payload.propertyCompanyId = authStore.propertyCompanyId
+  payload.communityId = DEFAULT_COMMUNITY_ID
+  return payload
+}
+
+function buildUpdatePayload(status: string): AnnouncementUpdatePayload {
+  const payload: AnnouncementUpdatePayload = {
+    title: form.value.title.trim(),
+    content: form.value.content.trim(),
+    announcementType: form.value.announcementType,
+    status,
+    collectEnabled: form.value.collectEnabled
+  }
+  const buildings = buildTargetBuildings()
+  payload.targetBuildings = buildings ?? []
+  return payload
+}
+
+function resetForm() {
+  editingId.value = ''
+  form.value = {
+    title: '',
+    content: '',
+    announcementType: ANNOUNCEMENT_TYPE.PROPERTY,
+    selectedBuildings: [],
+    collectEnabled: false
+  }
+  selectAllBuildings.value = true
+  formError.value = ''
+}
+
+function applyDetailToForm(data: AnnouncementItem) {
+  editingId.value = data.id
+  form.value.title = data.title || ''
+  form.value.content = data.content || ''
+  form.value.announcementType = data.announcementType || ANNOUNCEMENT_TYPE.PROPERTY
+  form.value.selectedBuildings = data.targetBuildings ? [...data.targetBuildings] : []
+  form.value.collectEnabled = !!data.collectEnabled
+  selectAllBuildings.value = !data.targetBuildings?.length
+  formError.value = ''
+  formSuccess.value = ''
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+async function loadNotices(page = currentPage.value) {
+  loading.value = true
+  try {
+    const res = await announcementApi.list({
+      page,
+      pageSize: PAGE_SIZE,
+      sort: '-publishedAt'
+    })
     notices.value = mapAnnouncements(res.list || [])
     noticesTotal.value = res.pagination?.total ?? notices.value.length
+    currentPage.value = res.pagination?.page ?? page
+    totalPages.value = res.pagination?.totalPages ?? 1
+  } catch (e) {
+    console.error(e)
+    notices.value = []
+    noticesTotal.value = 0
+    totalPages.value = 1
   } finally {
     loading.value = false
   }
+}
+
+async function submitForm(status: string) {
+  const title = form.value.title.trim()
+  const content = form.value.content.trim()
+  if (!title) {
+    formError.value = '请填写通告标题'
+    formSuccess.value = ''
+    return
+  }
+  if (!content) {
+    formError.value = '请填写通告内容'
+    formSuccess.value = ''
+    return
+  }
+
+  formSubmitting.value = true
+  formError.value = ''
+  formSuccess.value = ''
+
+  try {
+    if (editingId.value) {
+      await announcementApi.update(editingId.value, buildUpdatePayload(status))
+      formSuccess.value = status === ANNOUNCEMENT_STATUS.PUBLISHED ? '通告已更新并发布' : '草稿已保存'
+    } else {
+      await announcementApi.create(buildCreatePayload(status))
+      formSuccess.value = status === ANNOUNCEMENT_STATUS.PUBLISHED ? '通告发布成功' : '草稿保存成功'
+      resetForm()
+    }
+    await loadNotices(currentPage.value)
+    if (status === ANNOUNCEMENT_STATUS.PUBLISHED && editingId.value) {
+      resetForm()
+    }
+  } catch (e) {
+    formError.value = resolveErrorMessage(e)
+  } finally {
+    formSubmitting.value = false
+  }
+}
+
+async function startEdit(id: string) {
+  try {
+    const data = await announcementApi.get(id)
+    applyDetailToForm(data)
+  } catch (e) {
+    formError.value = resolveErrorMessage(e)
+  }
+}
+
+async function openDetailModal(id: string) {
+  detailError.value = ''
+  detailData.value = null
+  detailModalOpen.value = true
+  detailLoading.value = true
+  try {
+    detailData.value = await announcementApi.get(id)
+  } catch (e) {
+    detailError.value = resolveErrorMessage(e)
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function closeDetailModal() {
+  detailModalOpen.value = false
+  detailData.value = null
+  detailError.value = ''
+}
+
+function openDeleteModal(id: string, title: string) {
+  deleteTargetId.value = id
+  deleteTargetTitle.value = title
+  deleteError.value = ''
+  deleteModalOpen.value = true
+}
+
+function closeDeleteModal() {
+  deleteModalOpen.value = false
+  deleteTargetId.value = ''
+  deleteTargetTitle.value = ''
+  deleteError.value = ''
+}
+
+async function submitDelete() {
+  if (!deleteTargetId.value) return
+  deleteSubmitting.value = true
+  deleteError.value = ''
+  try {
+    await announcementApi.remove(deleteTargetId.value)
+    if (editingId.value === deleteTargetId.value) resetForm()
+    closeDeleteModal()
+    await loadNotices(currentPage.value)
+  } catch (e) {
+    deleteError.value = resolveErrorMessage(e)
+  } finally {
+    deleteSubmitting.value = false
+  }
+}
+
+function changePage(page: number) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  loadNotices(page)
+}
+
+function submitSearch() {
+  clearTimeout(searchTimer)
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(submitSearch, 300)
+}
+
+onMounted(async () => {
+  await loadBuildingOptions()
+  await loadNotices(1)
 })
 </script>
 
@@ -186,11 +608,15 @@ onMounted(async () => {
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
 .actions { display: flex; gap: 12px; }
-.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; }
-.btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
-.btnPrimary { display: flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #ffffff; font-size: 14px; }
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnSecondary:hover:not(:disabled) { border-color: #5c5c9e; color: #5c5c9e; }
+.btnSecondary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btnPrimary { display: flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #ffffff; font-size: 14px; border: none; cursor: pointer; }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 .btnPrimary svg { width: 16px; height: 16px; }
-.grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 20px; }
+.grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 12px; }
+.formError { font-size: 13px; color: #e05c5c; margin-bottom: 12px; }
+.formSuccess { font-size: 13px; color: #3aaf7d; margin-bottom: 12px; }
 
 .card { background: #ffffff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .card .header { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: #5c5c9e; margin-bottom: 20px; }
@@ -198,45 +624,32 @@ onMounted(async () => {
 .card .field { margin-bottom: 20px; }
 .card .field:last-child { margin-bottom: 0; }
 .card .label { display: block; font-size: 14px; color: #5c5c66; margin-bottom: 10px; }
-.card .select { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; color: #1f1f2e; font-size: 14px; cursor: pointer; }
-.card .select svg { width: 16px; height: 16px; color: #8c8c9a; }
-.card .input { width: 100%; padding: 10px 14px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; font-size: 14px; color: #1f1f2e; outline: none; }
+.card .input,
+.card .contentInput { width: 100%; padding: 10px 14px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; font-size: 14px; color: #1f1f2e; outline: none; box-sizing: border-box; font-family: inherit; }
+.card .input:focus,
+.card .contentInput:focus { border-color: #5c5c9e; background: #ffffff; }
+.card .contentInput { resize: vertical; min-height: 160px; }
+.card .contentInput::placeholder,
 .card .input::placeholder { color: #8c8c9a; }
-.card .editor { border: 1px solid #e8e8ec; border-radius: 8px; overflow: hidden; }
-.card .toolbar { display: flex; gap: 8px; padding: 8px 12px; background: #f0f0ff; border-bottom: 1px solid #e8e8ec; }
-.card .toolbar .btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 14px; font-weight: 600; color: #5c5c66; border: none; background: transparent; }
-.card .toolbar .btn.active { background: #ffffff; color: #5c5c9e; }
-.card .content { width: 100%; height: 160px; padding: 14px; border: none; background: #fafafc; font-size: 14px; color: #1f1f2e; resize: vertical; outline: none; }
-.card .content::placeholder { color: #8c8c9a; }
 .card .checkboxGroup { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .card .checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #5c5c66; }
+.card .checkbox.inline { margin-bottom: 0; }
+.card .checkbox.disabled { opacity: 0.5; cursor: not-allowed; }
 .card .checkbox input { position: absolute; opacity: 0; width: 0; height: 0; }
 .card .checkmark { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #d0d0d8; display: flex; align-items: center; justify-content: center; color: #ffffff; flex-shrink: 0; }
 .card .checkbox input:checked + .checkmark { background: #5c5c9e; border-color: #5c5c9e; }
 .card .checkmark svg { width: 14px; height: 14px; }
-.card .rangeHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.card .rangeHeader .label { margin-bottom: 0; }
-.card .value { font-size: 13px; color: #5c5c9e; font-weight: 500; }
-.card .slider { position: relative; height: 6px; background: #e8e8ec; border-radius: 3px; margin-bottom: 12px; }
-.card .track { position: absolute; top: 0; left: 0; right: 0; height: 100%; background: #5c5c9e; border-radius: 3px; }
-.card .thumb { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: #5c5c9e; transform: translate(-50%, -50%); border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.card .inputs { display: flex; align-items: center; gap: 12px; }
-.card .inputs input { width: 60px; text-align: center; }
-.card .inputs span { color: #8c8c9a; font-size: 14px; }
-.card .genderGroup { display: flex; border: 1px solid #e8e8ec; border-radius: 8px; overflow: hidden; }
-.card .genderGroup .btn { flex: 1; padding: 8px 16px; font-size: 14px; color: #5c5c66; border: none; background: #ffffff; }
-.card .genderGroup .btn.active { background: #5c5c9e; color: #ffffff; }
+.card .hint { font-size: 12px; color: #8c8c9a; margin-top: 8px; }
 .card .infoBox { display: flex; align-items: flex-start; gap: 10px; padding: 14px; background: #fff8e8; border-radius: 10px; font-size: 13px; color: #8c6a3a; line-height: 1.5; }
 .card .infoBox svg { width: 18px; height: 18px; flex-shrink: 0; color: #f5a623; }
 
 .history { background: #ffffff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.history .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.history .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
 .history .header { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: #5c5c9e; margin-bottom: 0; }
 .history .icon { width: 20px; height: 20px; }
 .history .search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; min-width: 220px; }
 .history .search svg { width: 16px; height: 16px; color: #8c8c9a; }
 .history .search input { border: none; background: transparent; font-size: 14px; color: #1f1f2e; outline: none; flex: 1; }
-.history .search input::placeholder { color: #8c8c9a; }
 .history .table { width: 100%; font-size: 14px; }
 .history .table thead th { text-align: left; padding: 14px 24px; color: #8c8c9a; font-weight: 500; background: #fafafc; border-bottom: 1px solid #f0f0f3; }
 .history .table tbody td { padding: 16px 24px; color: #1f1f2e; border-bottom: 1px solid #f0f0f3; vertical-align: middle; }
@@ -249,20 +662,47 @@ onMounted(async () => {
 .history .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
 .history .status.published { color: #3aaf7d; }
 .history .status.published::before { background: #3aaf7d; }
-.history .status.withdrawn { color: #8c8c9a; }
-.history .status.withdrawn::before { background: #c8c8d0; }
-.history .detail { font-size: 14px; color: #5c5c9e; }
-.history .footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 1px solid #f0f0f3; margin: 0 -24px -24px; }
+.history .status.draft { color: #f5a623; }
+.history .status.draft::before { background: #f5a623; }
+.history .status.archived { color: #8c8c9a; }
+.history .status.archived::before { background: #c8c8d0; }
+.history .rowActions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.history .detail { font-size: 14px; color: #5c5c9e; background: transparent; border: none; cursor: pointer; padding: 0; }
+.history .danger { font-size: 14px; color: #e05c5c; background: transparent; border: none; cursor: pointer; padding: 0; }
+.history .footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 1px solid #f0f0f3; margin: 0 -24px -24px; flex-wrap: wrap; gap: 12px; }
 .history .total { font-size: 13px; color: #8c8c9a; }
-.history .pagination { display: flex; gap: 8px; }
-.history .pageBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; }
+.history .pagination { display: flex; align-items: center; gap: 8px; }
+.history .pageBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .history .pageBtn:disabled { color: #c8c8d0; cursor: not-allowed; }
-.history .pageBtn.active { background: #5c5c9e; color: #ffffff; border-color: #5c5c9e; }
+.history .pageInfo { font-size: 13px; color: #8c8c9a; min-width: 48px; text-align: center; }
+
+.modalOverlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal { width: 100%; max-width: 480px; background: #ffffff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+.modalWide { max-width: 720px; }
+.modalScroll { max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.modalScroll .modalBody { overflow-y: auto; }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f0f0f3; }
+.modalTitle { font-size: 16px; font-weight: 600; color: #1f1f2e; margin: 0; }
+.modalClose { width: 32px; height: 32px; border: none; background: transparent; font-size: 24px; color: #8c8c9a; cursor: pointer; }
+.modalBody { padding: 24px; }
+.detailGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 24px; margin-bottom: 8px; }
+.detailItem { display: flex; flex-direction: column; gap: 4px; }
+.detailContent { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.detailLabel { font-size: 12px; color: #8c8c9a; }
+.detailValue { font-size: 14px; color: #1f1f2e; word-break: break-all; }
+.detailValue.content { white-space: pre-wrap; line-height: 1.6; margin: 0; }
+.loadingText { text-align: center; color: #8c8c9a; padding: 24px 0; }
+.confirmText { font-size: 14px; color: #1f1f2e; line-height: 1.6; margin: 0 0 16px; }
+.error { font-size: 13px; color: #e05c5c; margin-bottom: 12px; }
+.modalFooter { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+.btnDanger { padding: 10px 18px; border-radius: 8px; border: none; background: #e05c5c; color: #ffffff; font-size: 14px; cursor: pointer; }
+.btnDanger:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @media (max-width: 900px) {
   .header { flex-direction: column; gap: 16px; }
   .grid { grid-template-columns: 1fr; }
-  .history .head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .history .head { flex-direction: column; align-items: flex-start; }
   .history .table { display: block; overflow-x: auto; }
+  .detailGrid { grid-template-columns: 1fr; }
 }
 </style>

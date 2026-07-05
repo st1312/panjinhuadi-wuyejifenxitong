@@ -307,15 +307,29 @@ export interface MerchantProfitSpace {
   }
 }
 
+export interface AnnouncementCollectField {
+  name: string
+  label: string
+  type: string
+}
+
 export interface AnnouncementItem {
   id: string
   title: string
   content?: string
   announcementType?: string
+  propertyCompanyId?: string
+  communityId?: string
+  merchantId?: string | null
+  coverUrls?: string[]
+  targetRoles?: string[]
   targetBuildings?: string[]
+  collectEnabled?: boolean
+  collectFields?: AnnouncementCollectField[]
   status?: string
   publishedAt?: string
   createdAt?: string
+  updatedAt?: string
   publisherName?: string
   publisher?: string
 }
@@ -331,7 +345,19 @@ export interface AnnouncementCreatePayload {
   targetRoles?: string[]
   targetBuildings?: string[]
   collectEnabled?: boolean
-  collectFields?: unknown[]
+  collectFields?: AnnouncementCollectField[]
+  status?: string
+}
+
+export interface AnnouncementUpdatePayload {
+  title?: string
+  content?: string
+  announcementType?: string
+  coverUrls?: string[]
+  targetRoles?: string[]
+  targetBuildings?: string[]
+  collectEnabled?: boolean
+  collectFields?: AnnouncementCollectField[]
   status?: string
 }
 

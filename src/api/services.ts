@@ -3,6 +3,7 @@ import { MERCHANT_AUDIT_STATUS } from '../constants/enums'
 import type {
   AnnouncementCreatePayload,
   AnnouncementItem,
+  AnnouncementUpdatePayload,
   DashboardOverview,
   DeliveryOrderItem,
   DeliveryRule,
@@ -309,9 +310,23 @@ export const pointApi = {
 
 export const announcementApi = {
 
-  list(params: Record<string, string | number | undefined> = {}) {
+  list(params: {
+    page?: number
+    pageSize?: number
+    announcementType?: string
+    communityId?: string
+    merchantId?: string
+    readStatus?: string
+    sort?: string
+  } = {}) {
 
-    return request<PageResult<AnnouncementItem>>(`/admin/announcements${buildQuery(params)}`)
+    return request<PageResult<AnnouncementItem>>(`/announcements${buildQuery(params)}`)
+
+  },
+
+  get(id: string) {
+
+    return request<AnnouncementItem>(`/announcements/${id}`)
 
   },
 
@@ -322,6 +337,28 @@ export const announcementApi = {
       method: 'POST',
 
       body: JSON.stringify(payload)
+
+    })
+
+  },
+
+  update(id: string, payload: AnnouncementUpdatePayload) {
+
+    return request<AnnouncementItem>(`/announcements/${id}`, {
+
+      method: 'PUT',
+
+      body: JSON.stringify(payload)
+
+    })
+
+  },
+
+  remove(id: string) {
+
+    return request<{ id: string; status: string }>(`/announcements/${id}`, {
+
+      method: 'DELETE'
 
     })
 
