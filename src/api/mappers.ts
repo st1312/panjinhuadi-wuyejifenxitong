@@ -5,11 +5,13 @@ import type {
   MerchantProfitSpace,
   OperationLogItem,
   PermissionItemDto,
+  PermissionChangeLog,
+  PlatformMerchantItem,
   ReportsOverview,
   ResidentItem,
   RolePresetDto
 } from './types'
-import { getEnumLabel, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, RESIDENT_STATUS_LABEL } from '../constants/enums'
+import { getEnumLabel, ANNOUNCEMENT_STATUS, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, MERCHANT_STATUS_LABEL, PERMISSION_MODULE_LABEL, RESIDENT_STATUS, RESIDENT_STATUS_LABEL, RESIDENT_USER_TYPE, ROLE_LABEL } from '../constants/enums'
 
 const avatarColors = ['#5c5c9e', '#3aaf7d', '#f5a623', '#e05c5c', '#6a6aae']
 
@@ -153,8 +155,8 @@ export function mapResidents(list: ResidentItem[]) {
       initials: initials(name),
       avatarColor: avatarColor(item.id || name),
       building: [item.building, item.unit, item.room].filter(Boolean).join('') || '-',
-      identity: item.userType === 'owner' ? 'owner' as const : 'tenant' as const,
-      status: item.status || 'active',
+      identity: item.userType === RESIDENT_USER_TYPE.OWNER ? 'owner' as const : 'tenant' as const,
+      status: item.status || RESIDENT_STATUS.ACTIVE,
       statusLabel: getEnumLabel(RESIDENT_STATUS_LABEL, item.status),
       familyCount: item.familyId ? '—' : '—',
       registerTime: item.createdAt || '-'
@@ -177,11 +179,26 @@ export function mapMerchants(list: MerchantItem[]) {
     categoryCode: item.category?.includes('餐') ? 'dining' as const : 'retail' as const,
     merchantLevel: getEnumLabel(MERCHANT_LEVEL_LABEL, item.merchantLevel),
     auditStatus: getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, item.auditStatus),
+    status: item.status,
+    statusLabel: getEnumLabel(MERCHANT_STATUS_LABEL, item.status, '—'),
     commissionRate: item.commissionRate !== undefined ? `${formatPercent(item.commissionRate)}%` : '-',
     pointsRatio: item.pointExchangeRate !== undefined ? `${item.pointExchangeRate} / ¥1` : '-',
     cashbackRate: item.coinRebateRate !== undefined ? `${formatPercent(item.coinRebateRate)}%` : '0%',
-    ownerPrice: item.memberDiscountPrice ? `${item.memberDiscountPrice}元` : '-',
-    status: item.status === 'active' || item.auditStatus === 'approved' ? 'connected' as const : 'disconnected' as const
+    ownerPrice: item.memberDiscountPrice ? `${item.memberDiscountPrice}元` : '-'
+  }))
+}
+
+export function mapPlatformMerchants(list: PlatformMerchantItem[]) {
+  return list.map(item => ({
+    id: item.id,
+    name: item.name,
+    category: item.category || '—',
+    categoryCode: item.category?.includes('餐') ? 'dining' as const : 'retail' as const,
+    contactPhone: item.contactPhone || '—',
+    status: item.status,
+    statusLabel: getEnumLabel(MERCHANT_STATUS_LABEL, item.status, '—'),
+    linkedPropertyCount: item.linkedPropertyCount ?? 0,
+    createdAt: item.createdAt || '—'
   }))
 }
 
@@ -238,7 +255,7 @@ export function mapPointsUsers(list: ResidentItem[]) {
       pcoin: `${formatMoney(item.coinBalance)} PCoin`,
       coinBalance: item.coinBalance ?? 0,
       frozenRecordId: undefined as string | undefined,
-      status: item.coinFrozen || item.status === 'frozen' || item.status === 'disabled'
+      status: item.coinFrozen || item.status === RESIDENT_STATUS.FROZEN || item.status === RESIDENT_STATUS.DISABLED
         ? 'frozen' as const
         : 'normal' as const
     }
@@ -252,60 +269,96 @@ export function mapAnnouncements(list: AnnouncementItem[]) {
     title: item.title,
     publisher: item.publisherName || item.publisher || '物业管理处',
     scope: item.targetBuildings?.length ? item.targetBuildings : ['全部楼栋'],
-    status: item.status === 'archived' || item.status === 'withdrawn' ? 'withdrawn' as const : 'published' as const
+    status: item.status === ANNOUNCEMENT_STATUS.ARCHIVED || item.status === 'withdrawn' ? 'withdrawn' as const : 'published' as const
   }))
 }
 
-export function normalizePermissionGroups(data: PermissionItemDto[] | { list?: PermissionItemDto[]; groups?: Array<{ category: string; items: PermissionItemDto[] }> } | undefined) {
+export function extractPermissionPool(data: PermissionItemDto[] | { permissions?: PermissionItemDto[]; list?: PermissionItemDto[] } | undefined) {
   if (!data) return []
-  if (Array.isArray(data)) {
-    const map = new Map<string, PermissionItemDto[]>()
-    data.forEach(item => {
-      const category = item.category || item.group || '其他'
-      if (!map.has(category)) map.set(category, [])
-      map.get(category)!.push(item)
-    })
-    return Array.from(map.entries()).map(([category, items]) => ({
-      category,
-      items: items.map(item => ({
-        code: item.id || item.code || item.name,
-        name: item.name,
-        checked: item.enabled ?? item.granted ?? false
-      }))
-    }))
-  }
-  if (data.groups) {
-    return data.groups.map(group => ({
-      category: group.category,
-      items: group.items.map(item => ({
-        code: item.id || item.code || item.name,
-        name: item.name,
-        checked: item.enabled ?? item.granted ?? false
-      }))
-    }))
-  }
-  if (data.list) {
-    return normalizePermissionGroups(data.list)
-  }
+  if (Array.isArray(data)) return data
+  if (data.permissions) return data.permissions
+  if (data.list) return data.list
   return []
 }
 
-export function normalizeRolePresets(data: RolePresetDto[] | { list?: RolePresetDto[] } | undefined) {
-  if (!data) return []
-  const list = Array.isArray(data) ? data : data.list || []
-  return list.map(item => ({
-    code: item.id || item.code || item.name,
-    name: item.name
+export function buildPermissionGroups(pool: PermissionItemDto[], effectiveCodes: string[] = []) {
+  const effective = new Set(effectiveCodes)
+  const map = new Map<string, PermissionItemDto[]>()
+  pool.forEach(item => {
+    const category = PERMISSION_MODULE_LABEL[item.module || ''] || item.module || item.category || item.group || '其他'
+    if (!map.has(category)) map.set(category, [])
+    map.get(category)!.push(item)
+  })
+  return Array.from(map.entries()).map(([category, items]) => ({
+    category,
+    items: items.map(item => ({
+      code: item.code,
+      name: item.name,
+      description: item.description || '',
+      checked: effective.has(item.code)
+    }))
   }))
 }
 
-export function mapPermissionLogs(list: Array<{ createdAt?: string; operatorName?: string; targetName?: string; targetUserName?: string; content?: string; changeContent?: string }>) {
+export function normalizePermissionGroups(data: PermissionItemDto[] | { permissions?: PermissionItemDto[]; list?: PermissionItemDto[]; groups?: Array<{ category: string; items: PermissionItemDto[] }> } | undefined, effectiveCodes: string[] = []) {
+  if (data && 'groups' in data && data.groups) {
+    const effective = new Set(effectiveCodes)
+    return data.groups.map(group => ({
+      category: group.category,
+      items: group.items.map(item => ({
+        code: item.code,
+        name: item.name,
+        description: item.description || '',
+        checked: effective.has(item.code)
+      }))
+    }))
+  }
+  return buildPermissionGroups(extractPermissionPool(data), effectiveCodes)
+}
+
+export function normalizeRolePresets(data: RolePresetDto[] | { presets?: RolePresetDto[]; list?: RolePresetDto[] } | undefined) {
+  if (!data) return []
+  const list = Array.isArray(data) ? data : data.presets || data.list || []
   return list.map(item => ({
-    time: item.createdAt || '-',
-    operator: item.operatorName || '-',
-    target: item.targetName || item.targetUserName || '-',
-    content: item.content || item.changeContent || '-'
+    id: item.id,
+    code: item.id || item.code || item.name,
+    name: item.name,
+    role: item.role || '',
+    permissionCodes: item.permissionCodes || item.permissions || []
   }))
+}
+
+export function mapAdminUserAccounts(list: Array<{ id: string; name: string; phone?: string; role: string; effectivePermissionCount?: number }>) {
+  return list.map(item => ({
+    id: item.id,
+    name: item.name,
+    phone: item.phone || '-',
+    initials: initials(item.name),
+    role: getEnumLabel(ROLE_LABEL, item.role, item.role),
+    roleCode: item.role,
+    permissionCount: item.effectivePermissionCount ?? 0
+  }))
+}
+
+export function mapPermissionChangeLogs(list: PermissionChangeLog[]) {
+  return list.map(item => {
+    const actionLabel = item.action === 'grant' ? '授予' : item.action === 'revoke' ? '撤销' : item.action || '-'
+    const content = item.permissionCode
+      ? `${actionLabel} ${item.permissionCode}${item.reason ? `（${item.reason}）` : ''}`
+      : item.content || item.changeContent || '-'
+    return {
+      id: item.id || `${item.createdAt}-${item.permissionCode}`,
+      time: item.createdAt || '-',
+      operator: item.operatorName || '-',
+      target: item.userName || item.targetName || item.targetUserName || '-',
+      content
+    }
+  })
+}
+
+/** @deprecated use mapPermissionChangeLogs */
+export function mapPermissionLogs(list: Array<{ createdAt?: string; operatorName?: string; targetName?: string; targetUserName?: string; content?: string; changeContent?: string; action?: string; permissionCode?: string; reason?: string; userName?: string }>) {
+  return mapPermissionChangeLogs(list as PermissionChangeLog[])
 }
 
 export function mapCollectionRate(overview: DashboardOverview) {

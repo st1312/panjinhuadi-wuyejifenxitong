@@ -1,23 +1,38 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { permissionApi } from '../api/services'
-import { mapPermissionLogs, normalizePermissionGroups, normalizeRolePresets } from '../api/mappers'
+import {
+  buildPermissionGroups,
+  extractPermissionPool,
+  mapAdminUserAccounts,
+  mapPermissionChangeLogs,
+  normalizeRolePresets
+} from '../api/mappers'
+import type { PermissionItemDto } from '../api/types'
+import { ApiError } from '../api/request'
 
-export interface Role {
+export interface RolePreset {
+  id: string
   code: string
   name: string
+  role: string
+  permissionCodes: string[]
 }
 
 export interface Account {
   id: string
   name: string
+  phone: string
   initials: string
   role: string
+  roleCode: string
+  permissionCount: number
 }
 
 export interface PermissionItem {
   code: string
   name: string
+  description: string
   checked: boolean
 }
 
@@ -27,69 +42,80 @@ export interface PermissionCategory {
 }
 
 export interface Log {
+  id: string
   time: string
   operator: string
   target: string
   content: string
 }
 
-function initials(name: string) {
-  return name.trim().slice(0, 2).toUpperCase() || '?'
-}
-
 export const usePermissionStore = defineStore('permission', () => {
-  const roleList = ref<Role[]>([])
+  const roleList = ref<RolePreset[]>([])
   const accountList = ref<Account[]>([])
   const permissionList = ref<PermissionCategory[]>([])
+  const permissionPool = ref<PermissionItemDto[]>([])
   const logList = ref<Log[]>([])
-  const activeAccount = ref<Account>({ id: '', name: '', initials: '', role: '' })
-  const activeRole = ref<Role>({ code: '', name: '' })
+  const activeAccount = ref<Account | null>(null)
+  const activePresetId = ref('')
+  const activePresetName = ref('')
+  const originalEffective = ref<string[]>([])
   const loading = ref(false)
+  const saving = ref(false)
+  const error = ref('')
+  const saveMessage = ref('')
+
+  function setPermissionChecks(codes: string[]) {
+    permissionList.value = buildPermissionGroups(permissionPool.value, codes)
+  }
+
+  function getCheckedCodes() {
+    return permissionList.value.flatMap(group => group.items.filter(item => item.checked).map(item => item.code))
+  }
+
+  async function loadLogs(userId?: string) {
+    const logs = await permissionApi.changeLogs({
+      page: 1,
+      pageSize: 20,
+      userId,
+      sort: '-createdAt'
+    })
+    logList.value = mapPermissionChangeLogs(logs.list || [])
+  }
+
+  async function loadAccounts(keyword = '') {
+    const res = await permissionApi.users({ keyword: keyword || undefined })
+    accountList.value = mapAdminUserAccounts(res.accounts || [])
+  }
 
   async function load() {
     loading.value = true
+    error.value = ''
     try {
-      const [permissions, roles, coordinators, sectors, individuals, logs] = await Promise.all([
+      const [permissionsRes, rolesRes] = await Promise.all([
         permissionApi.permissions(),
-        permissionApi.rolePresets(),
-        permissionApi.coordinators(),
-        permissionApi.sectorLeaders(),
-        permissionApi.individualLeaders(),
-        permissionApi.changeLogs()
+        permissionApi.rolePresets()
       ])
-
-      roleList.value = normalizeRolePresets(roles)
-      permissionList.value = normalizePermissionGroups(permissions)
-
-      const leaders = [
-        ...(coordinators.list || []),
-        ...(sectors.list || []),
-        ...(individuals.list || [])
-      ]
-
-      accountList.value = leaders.map(item => ({
-        id: item.id,
-        name: item.name,
-        initials: initials(item.name),
-        role: item.roleName || item.role || item.sector || '负责人'
-      }))
-
-      if (!accountList.value.length && roleList.value.length) {
-        accountList.value = roleList.value.map(role => ({
-          id: role.code,
-          name: role.name,
-          initials: initials(role.name),
-          role: role.name
-        }))
-      }
-
-      logList.value = mapPermissionLogs(logs.list || [])
-
+      permissionPool.value = extractPermissionPool(permissionsRes)
+      roleList.value = normalizeRolePresets(rolesRes)
+      permissionList.value = buildPermissionGroups(permissionPool.value, [])
+      await Promise.all([loadAccounts(), loadLogs()])
       if (accountList.value.length) {
-        selectAccount(accountList.value[0])
-      } else if (roleList.value.length) {
-        activeRole.value = roleList.value[0]
+        await selectAccount(accountList.value[0])
       }
+    } catch (e) {
+      error.value = e instanceof ApiError ? e.message : '权限数据加载失败'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function searchAccounts(keyword: string) {
+    loading.value = true
+    error.value = ''
+    try {
+      await loadAccounts(keyword)
+    } catch (e) {
+      error.value = e instanceof ApiError ? e.message : '账号搜索失败'
     } finally {
       loading.value = false
     }
@@ -97,21 +123,30 @@ export const usePermissionStore = defineStore('permission', () => {
 
   async function selectAccount(account: Account) {
     activeAccount.value = account
-    const target = roleList.value.find(item => item.name === account.role)
-    if (target) activeRole.value = target
+    saveMessage.value = ''
+    error.value = ''
     try {
       const data = await permissionApi.userPermissions(account.id)
-      const groups = normalizePermissionGroups(
-        Array.isArray(data) ? data : data.permissions || []
-      )
-      if (groups.length) permissionList.value = groups
-    } catch {
-      // 保留当前权限列表
+      activePresetId.value = data.rolePresetId || ''
+      activePresetName.value = data.rolePresetName || ''
+      originalEffective.value = [...(data.effectivePermissions || [])]
+      setPermissionChecks(data.effectivePermissions || [])
+      await loadLogs(account.id)
+    } catch (e) {
+      error.value = e instanceof ApiError ? e.message : '用户权限加载失败'
     }
   }
 
-  function selectRole(role: Role) {
-    activeRole.value = role
+  function applyPreset(preset: RolePreset) {
+    if (!activeAccount.value) {
+      error.value = '请先选择要配置的账号'
+      return
+    }
+    activePresetId.value = preset.id
+    activePresetName.value = preset.name
+    setPermissionChecks(preset.permissionCodes)
+    saveMessage.value = `已应用预设「${preset.name}」，请点击保存生效`
+    error.value = ''
   }
 
   function togglePermission(category: string, code: string) {
@@ -119,22 +154,66 @@ export const usePermissionStore = defineStore('permission', () => {
     if (!group) return
     const item = group.items.find(item => item.code === code)
     if (item) item.checked = !item.checked
+    saveMessage.value = ''
   }
 
-  async function resetPermissions() {
-    if (!activeAccount.value.id) return
-    await selectAccount(activeAccount.value)
+  function resetPermissions() {
+    if (!activeAccount.value) return
+    setPermissionChecks(originalEffective.value)
+    saveMessage.value = '已恢复为当前生效权限'
+    error.value = ''
   }
 
   async function savePermissions() {
-    if (!activeAccount.value.id) return
-    const permissionIds = permissionList.value
-      .flatMap(group => group.items)
-      .filter(item => item.checked)
-      .map(item => item.code)
-    await permissionApi.grantPermissions(activeAccount.value.id, permissionIds)
-    const logs = await permissionApi.changeLogs()
-    logList.value = mapPermissionLogs(logs.list || [])
+    if (!activeAccount.value) {
+      error.value = '请先选择账号'
+      return
+    }
+    saving.value = true
+    error.value = ''
+    saveMessage.value = ''
+    try {
+      const current = getCheckedCodes()
+      const original = new Set(originalEffective.value)
+      const toGrant = current.filter(code => !original.has(code))
+      const toRevoke = originalEffective.value.filter(code => !current.includes(code))
+
+      if (!toGrant.length && !toRevoke.length) {
+        saveMessage.value = '权限无变更'
+        return
+      }
+
+      if (toGrant.length) {
+        await permissionApi.grantPermissions(activeAccount.value.id, toGrant)
+      }
+      if (toRevoke.length) {
+        await permissionApi.revokePermissions(activeAccount.value.id, toRevoke)
+      }
+
+      const data = await permissionApi.userPermissions(activeAccount.value.id)
+      originalEffective.value = [...(data.effectivePermissions || [])]
+      setPermissionChecks(data.effectivePermissions || [])
+      activePresetId.value = data.rolePresetId || activePresetId.value
+      activePresetName.value = data.rolePresetName || activePresetName.value
+
+      if (activeAccount.value) {
+        activeAccount.value = {
+          ...activeAccount.value,
+          permissionCount: data.effectivePermissions?.length ?? activeAccount.value.permissionCount
+        }
+        const idx = accountList.value.findIndex(item => item.id === activeAccount.value!.id)
+        if (idx >= 0) {
+          accountList.value[idx] = { ...accountList.value[idx], permissionCount: data.effectivePermissions?.length ?? 0 }
+        }
+      }
+
+      await loadLogs(activeAccount.value.id)
+      saveMessage.value = '权限已保存并立即生效'
+    } catch (e) {
+      error.value = e instanceof ApiError ? e.message : '权限保存失败'
+    } finally {
+      saving.value = false
+    }
   }
 
   return {
@@ -143,11 +222,16 @@ export const usePermissionStore = defineStore('permission', () => {
     permissionList,
     logList,
     activeAccount,
-    activeRole,
+    activePresetId,
+    activePresetName,
     loading,
+    saving,
+    error,
+    saveMessage,
     load,
+    searchAccounts,
     selectAccount,
-    selectRole,
+    applyPreset,
     togglePermission,
     resetPermissions,
     savePermissions

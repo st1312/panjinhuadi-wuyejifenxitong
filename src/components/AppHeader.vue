@@ -7,6 +7,18 @@
     </div>
 
     <div class="appHeaderRight">
+      <div v-if="companies.length" class="companySelectWrap">
+        <select
+          v-model="selectedCompanyId"
+          class="companySelect"
+          :disabled="!canSwitchCompany"
+          @change="onCompanyChange"
+        >
+          <option v-for="company in companies" :key="company.id" :value="company.id">
+            {{ company.name }}
+          </option>
+        </select>
+      </div>
       <button class="appHeaderIconBtn">
         <IconSvg name="bell" />
       </button>
@@ -26,9 +38,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import IconSvg from './IconSvg.vue'
+import { propertyCompanyApi } from '../api/services'
+import type { PropertyCompanyItem } from '../api/types'
+import { ENTITY_STATUS, USER_ROLE } from '../constants/enums'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
@@ -36,11 +51,40 @@ const router = useRouter()
 const auth = useAuthStore()
 const pageTitle = computed(() => (route.meta.title as string) || '')
 
+const companies = ref<PropertyCompanyItem[]>([])
+const canSwitchCompany = computed(() => auth.profile?.role === USER_ROLE.PLATFORM_ADMIN)
+
+const selectedCompanyId = computed({
+  get: () => auth.propertyCompanyId,
+  set: (id: string) => auth.setPropertyCompanyId(id)
+})
+
+async function loadCompanies() {
+  try {
+    const res = await propertyCompanyApi.list(
+      { page: 1, pageSize: 100, status: ENTITY_STATUS.ACTIVE, sort: '-createdAt' },
+      true
+    )
+    companies.value = res.list || []
+    if (!auth.propertyCompanyId && companies.value.length) {
+      auth.setPropertyCompanyId(companies.value[0].id)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function onCompanyChange() {
+  if (!canSwitchCompany.value) return
+  router.go(0)
+}
+
 function handleLogout() {
   auth.logout()
   router.push('/login')
 }
 
+onMounted(loadCompanies)
 </script>
 
 <style scoped>
@@ -79,6 +123,32 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.companySelectWrap {
+  max-width: 200px;
+}
+
+.companySelect {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #e8e8ec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5c5c66;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.companySelect:focus {
+  border-color: #5c5c9e;
+}
+
+.companySelect:disabled {
+  cursor: default;
+  background: #fafafc;
+  color: #5c5c66;
 }
 
 .appHeaderIconBtn {

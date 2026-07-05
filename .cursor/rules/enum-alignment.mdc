@@ -1,0 +1,32 @@
+---
+description: 前后端枚举值对齐规范（《前后端对齐规范》§5）
+alwaysApply: true
+---
+
+# 枚举值对齐规范
+
+枚举定义以 `src/constants/enums.ts` 为唯一来源，须与《前后端对齐规范》§5.1 保持一致。
+
+## 核心规则
+
+- API 请求/响应中的枚举使用 **snake_case 字符串常量**（如 `official_certified`），禁止数字编码或中文文本
+- 代码中禁止硬编码枚举字符串，须引用 `enums.ts` 中的常量（如 `MERCHANT_LEVEL.OFFICIAL_CERTIFIED`）
+- 展示文本仅通过 `*_LABEL` 映射表或 `getEnumLabel()` 转换，不把中文传给 API
+- 新增/变更枚举时同步更新 `enums.ts`，commit 标注 `[ENUM]`
+
+## 已定义枚举（节选）
+
+| 常量 | 典型值 |
+|------|--------|
+| `MERCHANT_LEVEL` | `official_certified`, `property_certified`, `normal` |
+| `MERCHANT_AUDIT_STATUS` | `pending_audit`, `approved`, `rejected` |
+| `AUDIT_RESULT` | `approved`, `rejected`（审核提交） |
+| `MERCHANT_STATUS` / `ENTITY_STATUS` | `active`, `inactive` |
+| `ORDER_STATUS` | `pending`, `paid`, `delivering`, `completed`, `cancelled`, `refunding`, `refunded` |
+| `USER_ROLE` | `resident`, `property_admin`, `platform_admin`, `merchant`, `courier`, `activity_leader`, `technician` |
+| `RESIDENT_STATUS` | `active`, `frozen`, `disabled` |
+| `RESIDENT_USER_TYPE` | `owner`, `tenant` |
+| `ANNOUNCEMENT_TYPE` | `property_announcement`, `community_announcement`, … |
+| `VOTE_OPTION` | `support`, `oppose`, `abstain` |
+
+商家 **category（分类）** 为自由文本，不是枚举。

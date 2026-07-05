@@ -1,3 +1,5 @@
+import type { AuditResult } from '../constants/enums'
+
 export interface ApiResponse<T = unknown> {
   code: number
   message: string
@@ -161,15 +163,95 @@ export interface MerchantItem {
   status?: string
   coinRebateEnabled?: boolean
   merchantLevel?: string
+  levelWeight?: number
   businessHours?: string
   contactPhone?: string
   address?: string
   deliveryFee?: string | number
   freeDeliveryThreshold?: string | number
+  coverUrls?: string[]
+  videoUrl?: string | null
+  qrCodeUrl?: string
+  rankOrder?: number
+  createdAt?: string
+  updatedAt?: string
+  totalOrders?: number
+  totalRevenue?: number
+}
+
+export interface MerchantUpdatePayload {
+  name?: string
+  description?: string
+  coverUrls?: string[]
+  videoUrl?: string
+  businessHours?: string
+  contactPhone?: string
+  address?: string
+  deliveryFee?: number | string
+  freeDeliveryThreshold?: number | string
+  rankOrder?: number
+}
+
+export interface PlatformMerchantLinkedProperty {
+  propertyCompanyId: string
+  propertyName: string
+  linkedAt: string
+}
+
+export interface PlatformMerchantItem {
+  id: string
+  name: string
+  category?: string
+  contactPhone?: string
+  description?: string
+  coverUrl?: string
+  businessHours?: string
+  address?: string
+  status?: string
+  linkedPropertyCount?: number
+  linkedProperties?: PlatformMerchantLinkedProperty[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface PlatformMerchantCreatePayload {
+  name: string
+  category: string
+  contactPhone: string
+  description?: string
+  coverUrl?: string
+  businessHours?: string
+  address?: string
+}
+
+export interface PlatformMerchantUpdatePayload {
+  name?: string
+  category?: string
+  contactPhone?: string
+  description?: string
+  coverUrl?: string
+  businessHours?: string
+  address?: string
+  status?: string
+}
+
+export interface MerchantKickPayload {
+  reason: string
+  notifyMerchant?: boolean
+}
+
+export interface MerchantKickResult {
+  merchantId: string
+  merchantName: string
+  status: string
+  reason: string
+  kickedAt: string
+  operatorId?: string
+  notifySent?: boolean
 }
 
 export interface MerchantAuditPayload {
-  auditResult: 'approved' | 'rejected'
+  auditResult: AuditResult
   rejectReason?: string
   remark?: string
   merchantLevel?: string
@@ -273,9 +355,11 @@ export interface OperationLogItem {
 }
 
 export interface PermissionItemDto {
-  id: string
-  code?: string
+  code: string
   name: string
+  module?: string
+  action?: string
+  description?: string
   category?: string
   group?: string
   enabled?: boolean
@@ -286,13 +370,44 @@ export interface RolePresetDto {
   id: string
   code?: string
   name: string
+  role?: string
+  permissionCodes?: string[]
   permissions?: string[]
+  isDefault?: boolean
+  createdAt?: string
+}
+
+export interface AdminUserAccount {
+  id: string
+  name: string
+  phone?: string
+  role: string
+  propertyCompanyId?: string
+  status?: string
+  effectivePermissionCount?: number
+}
+
+export interface UserPermissionsDetail {
+  userId: string
+  userName?: string
+  role?: string
+  rolePresetId?: string
+  rolePresetName?: string
+  effectivePermissions?: string[]
+  grantedPermissions?: Array<{ code: string; reason?: string; grantedAt?: string }>
+  revokedPermissions?: Array<{ code: string; reason?: string; revokedAt?: string }>
 }
 
 export interface PermissionChangeLog {
   id?: string
-  createdAt?: string
+  userId?: string
+  userName?: string
+  operatorId?: string
   operatorName?: string
+  action?: string
+  permissionCode?: string
+  reason?: string
+  createdAt?: string
   targetName?: string
   targetUserName?: string
   content?: string
@@ -321,6 +436,17 @@ export interface PropertyCompanyDetail {
   id: string
   name?: string
   config?: PropertyCompanyConfig
+}
+
+export interface PropertyCompanyItem {
+  id: string
+  name: string
+  logoUrl?: string
+  contactPhone?: string
+  address?: string
+  communityCount?: number
+  status?: string
+  createdAt?: string
 }
 
 export interface PropertyCompanyConfig {

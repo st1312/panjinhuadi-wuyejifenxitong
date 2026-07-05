@@ -110,6 +110,11 @@ export const useAuthStore = defineStore('auth', () => {
     return true
   }
 
+  function setPropertyCompanyId(companyId: string) {
+    propertyCompanyId.value = companyId
+    localStorage.setItem(COMPANY_KEY, companyId)
+  }
+
   function logout() {
     clearTokens()
     profile.value = null
@@ -128,6 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile,
     propertyCompanyId,
     login,
-    logout
+    logout,
+    setPropertyCompanyId
   }
 })

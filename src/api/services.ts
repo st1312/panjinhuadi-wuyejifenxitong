@@ -1,4 +1,5 @@
 import { buildQuery, request } from './request'
+import { MERCHANT_AUDIT_STATUS } from '../constants/enums'
 import type {
   AnnouncementCreatePayload,
   AnnouncementItem,
@@ -9,17 +10,26 @@ import type {
   LeaderItem,
   LoginResult,
   MerchantItem,
+  MerchantKickPayload,
+  MerchantKickResult,
+  MerchantUpdatePayload,
   MerchantProfitSpace,
   MerchantAuditPayload,
   MerchantAuditResult,
+  PlatformMerchantCreatePayload,
+  PlatformMerchantItem,
+  PlatformMerchantUpdatePayload,
   OperationLogItem,
   OrderItem,
   PageResult,
   PermissionChangeLog,
   PermissionItemDto,
+  AdminUserAccount,
+  UserPermissionsDetail,
   PointPool,
   PropertyCompanyConfig,
   PropertyCompanyDetail,
+  PropertyCompanyItem,
   ResidentItem,
   ResidentCreatePayload,
   ResidentUpdatePayload,
@@ -181,22 +191,65 @@ export const coinFreezeRecordApi = {
 
 export const merchantApi = {
 
-  list(params: Record<string, string | number | undefined> = {}) {
+  list(params: {
+    page?: number
+    pageSize?: number
+    keyword?: string
+    category?: string
+    merchantLevel?: string
+    auditStatus?: string
+    propertyCompanyId?: string
+    sort?: string
+  } = {}) {
 
     return request<PageResult<MerchantItem>>(`/merchants${buildQuery(params)}`)
 
   },
 
-  listPlatform(params: Record<string, string | number | undefined> = {}) {
+  get(id: string, propertyCompanyId?: string) {
+    return request<MerchantItem>(`/merchants/${id}${buildQuery({ propertyCompanyId })}`)
+  },
 
-    return request<PageResult<MerchantItem>>(`/admin/platform-merchants${buildQuery(params)}`)
+  update(id: string, payload: MerchantUpdatePayload, propertyCompanyId?: string) {
+    return request<MerchantItem>(`/merchants/${id}${buildQuery({ propertyCompanyId })}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
 
+  listPlatform(params: {
+    page?: number
+    pageSize?: number
+    keyword?: string
+    category?: string
+    status?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<PlatformMerchantItem>>(`/admin/platform-merchants${buildQuery(params)}`)
+  },
+
+  createPlatform(payload: PlatformMerchantCreatePayload) {
+    return request<PlatformMerchantItem>('/admin/platform-merchants', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  getPlatform(id: string) {
+    return request<PlatformMerchantItem>(`/admin/platform-merchants/${id}`)
+  },
+
+  updatePlatform(id: string, payload: PlatformMerchantUpdatePayload) {
+    return request<PlatformMerchantItem>(`/admin/platform-merchants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
   },
 
   listPending(params: Record<string, string | number | undefined> = {}) {
 
     return request<PageResult<MerchantItem>>(
-      `/merchants${buildQuery({ auditStatus: 'pending_audit', ...params })}`
+      `/merchants${buildQuery({ auditStatus: MERCHANT_AUDIT_STATUS.PENDING, ...params })}`
     )
 
   },
@@ -213,10 +266,23 @@ export const merchantApi = {
 
   },
 
-  profitSpace(id: string, params: { period?: string; propertyCompanyId?: string } = {}) {
+  kick(id: string, payload: MerchantKickPayload) {
+    return request<MerchantKickResult>(`/admin/merchants/${id}/kick`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
 
-    return request<MerchantProfitSpace>(`/admin/platform-merchants/${id}/profit-space${buildQuery(params)}`)
-
+  profitSpace(
+    platformMerchantId: string,
+    params: { propertyCompanyId: string; period?: string }
+  ) {
+    return request<MerchantProfitSpace>(
+      `/admin/platform-merchants/${platformMerchantId}/profit-space${buildQuery({
+        propertyCompanyId: params.propertyCompanyId,
+        period: params.period
+      })}`
+    )
   }
 
 }
@@ -289,6 +355,26 @@ export const deliveryApi = {
 
 
 
+export const propertyCompanyApi = {
+
+  list(params: {
+    page?: number
+    pageSize?: number
+    keyword?: string
+    status?: string
+    sort?: string
+  } = {}, auth = false) {
+    return request<PageResult<PropertyCompanyItem>>(
+      `/property-companies${buildQuery(params)}`,
+      {},
+      auth
+    )
+  }
+
+}
+
+
+
 export const configApi = {
 
   propertyCompany(id: string) {
@@ -327,58 +413,49 @@ export const configApi = {
 
 export const permissionApi = {
 
+  users(params: { keyword?: string } = {}) {
+    return request<{ accounts: AdminUserAccount[]; total: number }>(
+      `/admin/users${buildQuery(params)}`
+    )
+  },
+
   permissions() {
-
-    return request<PermissionItemDto[] | { list?: PermissionItemDto[]; groups?: Array<{ category: string; items: PermissionItemDto[] }> }>('/admin/permissions')
-
+    return request<{ permissions: PermissionItemDto[] }>('/admin/permissions')
   },
 
   rolePresets() {
-
-    return request<RolePresetDto[] | PageResult<RolePresetDto>>('/admin/role-presets')
-
+    return request<{ presets: RolePresetDto[] }>('/admin/role-presets')
   },
 
   userPermissions(userId: string) {
-
-    return request<PermissionItemDto[] | { permissions?: PermissionItemDto[] }>(`/admin/users/${userId}/permissions`)
-
+    return request<UserPermissionsDetail>(`/admin/users/${userId}/permissions`)
   },
 
-  grantPermissions(userId: string, permissionIds: string[]) {
-
+  grantPermissions(userId: string, permissionCodes: string[], reason?: string) {
     return request<unknown>(`/admin/users/${userId}/permissions/grant`, {
-
       method: 'POST',
-
-      body: JSON.stringify({ permissionIds })
-
+      body: JSON.stringify({ permissionCodes, reason })
     })
-
   },
 
-  changeLogs(page = 1, pageSize = 20) {
-
-    return request<PageResult<PermissionChangeLog>>(`/admin/permission-change-logs${buildQuery({ page, pageSize })}`)
-
+  revokePermissions(userId: string, permissionCodes: string[]) {
+    return request<unknown>(`/admin/users/${userId}/permissions/revoke`, {
+      method: 'POST',
+      body: JSON.stringify({ permissionCodes })
+    })
   },
 
-  coordinators() {
-
-    return request<PageResult<LeaderItem>>(`/admin/coordinators${buildQuery({ page: 1, pageSize: 100 })}`)
-
-  },
-
-  sectorLeaders() {
-
-    return request<PageResult<LeaderItem>>(`/admin/sector-leaders${buildQuery({ page: 1, pageSize: 100 })}`)
-
-  },
-
-  individualLeaders() {
-
-    return request<PageResult<LeaderItem>>(`/admin/individual-leaders${buildQuery({ page: 1, pageSize: 100 })}`)
-
+  changeLogs(params: {
+    page?: number
+    pageSize?: number
+    userId?: string
+    startDate?: string
+    endDate?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<PermissionChangeLog>>(
+      `/admin/permission-change-logs${buildQuery(params)}`
+    )
   }
 
 }

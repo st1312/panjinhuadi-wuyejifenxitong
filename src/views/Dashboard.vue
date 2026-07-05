@@ -176,16 +176,16 @@
               <label class="label">审核结果</label>
               <div class="radioGroup">
                 <label class="radioItem">
-                  <input v-model="auditForm.auditResult" type="radio" value="approved" />
+                  <input v-model="auditForm.auditResult" type="radio" :value="AUDIT_RESULT.APPROVED" />
                   <span>通过</span>
                 </label>
                 <label class="radioItem">
-                  <input v-model="auditForm.auditResult" type="radio" value="rejected" />
+                  <input v-model="auditForm.auditResult" type="radio" :value="AUDIT_RESULT.REJECTED" />
                   <span>拒绝</span>
                 </label>
               </div>
             </div>
-            <div v-if="auditForm.auditResult === 'rejected'" class="field">
+            <div v-if="auditForm.auditResult === AUDIT_RESULT.REJECTED" class="field">
               <label class="label">拒绝原因</label>
               <textarea
                 v-model="auditForm.rejectReason"
@@ -196,7 +196,7 @@
                 required
               />
             </div>
-            <template v-if="auditForm.auditResult === 'approved'">
+            <template v-if="auditForm.auditResult === AUDIT_RESULT.APPROVED">
               <div class="field">
                 <label class="label">商家等级</label>
                 <select v-model="auditForm.merchantLevel" class="input">
@@ -333,8 +333,10 @@ import {
   ANNOUNCEMENT_STATUS_OPTIONS,
   ANNOUNCEMENT_TYPE,
   ANNOUNCEMENT_TYPE_OPTIONS,
+  AUDIT_RESULT,
   MERCHANT_LEVEL,
-  MERCHANT_LEVEL_OPTIONS
+  MERCHANT_LEVEL_OPTIONS,
+  type AuditResult
 } from '../constants/enums'
 
 const loading = ref(true)
@@ -377,7 +379,7 @@ const auditError = ref('')
 const auditSuccess = ref('')
 const auditForm = ref<{
   merchantId: string
-  auditResult: 'approved' | 'rejected'
+  auditResult: AuditResult
   rejectReason: string
   remark: string
   merchantLevel: string
@@ -387,7 +389,7 @@ const auditForm = ref<{
   freeDeliveryThreshold: string
 }>({
   merchantId: '',
-  auditResult: 'approved' as 'approved' | 'rejected',
+  auditResult: AUDIT_RESULT.APPROVED,
   rejectReason: '',
   remark: '',
   merchantLevel: MERCHANT_LEVEL.PROPERTY_CERTIFIED,
@@ -488,7 +490,7 @@ function closeCoinModal() {
 function resetAuditForm() {
   auditForm.value = {
     merchantId: '',
-    auditResult: 'approved',
+    auditResult: AUDIT_RESULT.APPROVED,
     rejectReason: '',
     remark: '',
     merchantLevel: MERCHANT_LEVEL.PROPERTY_CERTIFIED,
@@ -610,7 +612,7 @@ async function submitAuditModal() {
     return
   }
 
-  if (auditForm.value.auditResult === 'rejected' && !auditForm.value.rejectReason.trim()) {
+  if (auditForm.value.auditResult === AUDIT_RESULT.REJECTED && !auditForm.value.rejectReason.trim()) {
     auditError.value = '请填写拒绝原因'
     return
   }
@@ -628,7 +630,7 @@ async function submitAuditModal() {
       payload.remark = auditForm.value.remark.trim()
     }
 
-    if (auditForm.value.auditResult === 'rejected') {
+    if (auditForm.value.auditResult === AUDIT_RESULT.REJECTED) {
       payload.rejectReason = auditForm.value.rejectReason.trim()
     } else {
       payload.merchantLevel = auditForm.value.merchantLevel
@@ -641,7 +643,7 @@ async function submitAuditModal() {
     }
 
     const result = await merchantApi.audit(merchantId, payload)
-    auditSuccess.value = auditForm.value.auditResult === 'approved'
+    auditSuccess.value = auditForm.value.auditResult === AUDIT_RESULT.APPROVED
       ? `已通过「${result.name}」的入驻申请`
       : `已拒绝「${result.name}」的入驻申请`
     await refreshOperationLogs()

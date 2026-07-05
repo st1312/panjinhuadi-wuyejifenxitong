@@ -63,8 +63,8 @@
               <td>{{ resident.phone }}</td>
               <td>{{ resident.building }}</td>
               <td>
-                <span class="badge" :class="resident.identity === 'owner' ? 'purple' : 'green'">
-                  {{ resident.identity === 'owner' ? '业主' : '租住人员' }}
+                <span class="badge" :class="resident.identity === RESIDENT_USER_TYPE.OWNER ? 'purple' : 'green'">
+                  {{ resident.identity === RESIDENT_USER_TYPE.OWNER ? '业主' : '租住人员' }}
                 </span>
               </td>
               <td>
@@ -260,7 +260,11 @@
               </div>
               <div class="field">
                 <label class="label">婚姻状态</label>
-                <input v-model="editForm.maritalStatus" type="text" class="input" maxlength="20" placeholder="如 married" />
+                <select v-model="editForm.maritalStatus" class="input">
+                  <option v-for="opt in MARITAL_STATUS_OPTIONS" :key="opt.value || 'empty'" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
               </div>
               <div class="field">
                 <label class="label">是否有子女</label>
@@ -370,8 +374,14 @@ import { ApiError } from '../api/request'
 import type { ResidentItem, ResidentUpdatePayload } from '../api/types'
 import { formatMoney, formatPercent, mapResidents } from '../api/mappers'
 import {
+  RESIDENT_STATUS,
   RESIDENT_STATUS_OPTIONS,
   RESIDENT_STATUS_LABEL,
+  RESIDENT_USER_TYPE,
+  RESIDENT_USER_TYPE_LABEL,
+  MARITAL_STATUS_OPTIONS,
+  MARITAL_STATUS_LABEL,
+  USER_ROLE,
   getEnumLabel
 } from '../constants/enums'
 import { useAuthStore } from '../stores/auth'
@@ -386,8 +396,8 @@ const GENDER_OPTIONS = [
 ]
 
 const createUserTypeOptions = [
-  { value: 'owner', label: '业主' },
-  { value: 'tenant', label: '租住人员' }
+  { value: RESIDENT_USER_TYPE.OWNER, label: '业主' },
+  { value: RESIDENT_USER_TYPE.TENANT, label: '租住人员' }
 ]
 
 const authStore = useAuthStore()
@@ -427,7 +437,7 @@ const deleteTargetName = ref('')
 const createForm = ref({
   name: '',
   phone: '',
-  userType: 'owner',
+  userType: RESIDENT_USER_TYPE.OWNER,
   communityId: DEFAULT_COMMUNITY_ID,
   building: '',
   unit: '',
@@ -448,7 +458,7 @@ const editForm = ref<ResidentUpdatePayload & { name?: string }>({
 })
 
 const statusForm = ref({
-  status: 'active',
+  status: RESIDENT_STATUS.ACTIVE,
   reason: ''
 })
 
@@ -456,9 +466,9 @@ let searchTimer: ReturnType<typeof setTimeout>
 
 const statusTabs = [
   { code: 'all', name: '全部' },
-  { code: 'active', name: '正常' },
-  { code: 'frozen', name: '已冻结' },
-  { code: 'disabled', name: '已禁用' }
+  { code: RESIDENT_STATUS.ACTIVE, name: '正常' },
+  { code: RESIDENT_STATUS.FROZEN, name: '已冻结' },
+  { code: RESIDENT_STATUS.DISABLED, name: '已禁用' }
 ]
 const activeStatus = ref('all')
 
@@ -473,7 +483,7 @@ const pageEnd = computed(() => {
 })
 
 /** API 2.8：仅 property_admin 可编辑他人信息，platform_admin 无此权限 */
-const canEditResident = computed(() => authStore.profile?.role === 'property_admin')
+const canEditResident = computed(() => authStore.profile?.role === USER_ROLE.PROPERTY_ADMIN)
 
 const detailRows = computed(() => {
   const d = detailData.value
@@ -482,13 +492,13 @@ const detailRows = computed(() => {
   return [
     { label: '姓名', value: d.name || '—' },
     { label: '手机号', value: d.phone || '—' },
-    { label: '身份', value: d.userType === 'owner' ? '业主' : d.userType === 'tenant' ? '租住人员' : '—' },
+    { label: '身份', value: getEnumLabel(RESIDENT_USER_TYPE_LABEL, d.userType, '—') },
     { label: '状态', value: getEnumLabel(RESIDENT_STATUS_LABEL, d.status) },
     { label: '小区', value: d.communityName || d.communityId || '—' },
     { label: '楼栋/单元/房号', value: [d.building, d.unit, d.room].filter(Boolean).join(' ') || '—' },
     { label: '性别', value: genderLabel },
     { label: '年龄', value: d.age !== undefined && d.age !== null ? String(d.age) : '—' },
-    { label: '婚姻状态', value: d.maritalStatus || '—' },
+    { label: '婚姻状态', value: getEnumLabel(MARITAL_STATUS_LABEL, d.maritalStatus, '—') },
     { label: '是否有子女', value: d.hasChildren === true ? '是' : d.hasChildren === false ? '否' : '—' },
     { label: '积分余额', value: `${formatMoney(d.pointBalance)} pts` },
     { label: '物业币余额', value: `¥${formatMoney(d.coinBalance)}` },
@@ -501,8 +511,8 @@ const detailRows = computed(() => {
 })
 
 function statusBadgeClass(status: string) {
-  if (status === 'frozen') return 'orange'
-  if (status === 'disabled') return 'red'
+  if (status === RESIDENT_STATUS.FROZEN) return 'orange'
+  if (status === RESIDENT_STATUS.DISABLED) return 'red'
   return 'blue'
 }
 
@@ -595,7 +605,7 @@ function openCreateModal() {
   createForm.value = {
     name: '',
     phone: '',
-    userType: 'owner',
+    userType: RESIDENT_USER_TYPE.OWNER,
     communityId: DEFAULT_COMMUNITY_ID,
     building: '',
     unit: '',
@@ -739,7 +749,9 @@ function openStatusModal(id: string, currentStatus: string) {
   resetFormError()
   statusTargetId.value = id
   statusForm.value = {
-    status: currentStatus === 'frozen' || currentStatus === 'disabled' ? currentStatus : 'active',
+    status: currentStatus === RESIDENT_STATUS.FROZEN || currentStatus === RESIDENT_STATUS.DISABLED
+      ? currentStatus
+      : RESIDENT_STATUS.ACTIVE,
     reason: ''
   }
   statusModalOpen.value = true
