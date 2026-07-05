@@ -250,6 +250,54 @@ export const ANNOUNCEMENT_STATUS_OPTIONS = [
   { value: ANNOUNCEMENT_STATUS.DRAFT, label: '存为草稿' }
 ]
 
+export const COIN_ISSUE_MODE = {
+  AUTO: 'auto',
+  MANUAL: 'manual'
+} as const
+
+export const COIN_ISSUE_MODE_LABEL: Record<string, string> = {
+  auto: '自动发放',
+  manual: '手动发放'
+}
+
+export const COIN_ISSUE_MODE_OPTIONS = Object.entries(COIN_ISSUE_MODE_LABEL).map(([value, label]) => ({
+  value,
+  label
+}))
+
+export const COURIER_STATUS = {
+  ONLINE: 'online',
+  OFFLINE: 'offline'
+} as const
+
+export const COURIER_STATUS_LABEL: Record<string, string> = {
+  online: '在线',
+  offline: '离线'
+}
+
+export const DELIVERY_STATUS = {
+  PENDING: 'pending',
+  GRABBED: 'grabbed',
+  DELIVERING: 'delivering',
+  DELIVERED: 'delivered',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled'
+} as const
+
+export const DELIVERY_STATUS_LABEL: Record<string, string> = {
+  pending: '待抢单',
+  grabbed: '已抢单',
+  delivering: '配送中',
+  delivered: '已送达',
+  completed: '已完成',
+  cancelled: '已取消'
+}
+
+export const DELIVERY_CAPACITY_DIMENSION = {
+  H24: '24h',
+  D7: '7d'
+} as const
+
 export type AuditResult = (typeof AUDIT_RESULT)[keyof typeof AUDIT_RESULT]
 
 export function getEnumLabel(map: Record<string, string>, value?: string | null, fallback = '-') {

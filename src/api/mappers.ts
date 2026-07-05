@@ -1,6 +1,9 @@
 import type {
   AnnouncementItem,
   DashboardOverview,
+  DeliveryCourierItem,
+  DeliveryHourlyData,
+  DeliveryTodayStats,
   MerchantItem,
   MerchantProfitSpace,
   OperationLogItem,
@@ -8,11 +11,14 @@ import type {
   PermissionChangeLog,
   PlatformMerchantItem,
   PointPool,
+  PropertyCompanyConfig,
+  PropertyCompanyDetail,
+  RecentDeliveryItem,
   ReportsOverview,
   ResidentItem,
   RolePresetDto
 } from './types'
-import { getEnumLabel, ANNOUNCEMENT_STATUS, ANNOUNCEMENT_STATUS_LABEL, ANNOUNCEMENT_TYPE_LABEL, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, MERCHANT_STATUS_LABEL, PERMISSION_MODULE_LABEL, RESIDENT_STATUS, RESIDENT_STATUS_LABEL, RESIDENT_USER_TYPE, ROLE_LABEL } from '../constants/enums'
+import { getEnumLabel, ANNOUNCEMENT_STATUS, ANNOUNCEMENT_STATUS_LABEL, ANNOUNCEMENT_TYPE_LABEL, COURIER_STATUS, COURIER_STATUS_LABEL, DELIVERY_STATUS, DELIVERY_STATUS_LABEL, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, MERCHANT_STATUS_LABEL, PERMISSION_MODULE_LABEL, RESIDENT_STATUS, RESIDENT_STATUS_LABEL, RESIDENT_USER_TYPE, ROLE_LABEL } from '../constants/enums'
 
 const avatarColors = ['#5c5c9e', '#3aaf7d', '#f5a623', '#e05c5c', '#6a6aae']
 
@@ -36,6 +42,67 @@ export function formatMoney(value?: number) {
 export function formatPercent(rate?: number) {
   if (rate === undefined || rate === null) return 0
   return rate <= 1 ? Math.round(rate * 100) : Math.round(rate)
+}
+
+const PROPERTY_COMPANY_CONFIG_KEYS: (keyof PropertyCompanyConfig)[] = [
+  'propertyShareRate',
+  'coordinatorShareRate',
+  'sectorLeaderRate',
+  'individualLeaderRate',
+  'coinDisplayEnabled',
+  'coinIssueMode',
+  'coinExpiryDays',
+  'coinFreezeDefault',
+  'deliveryBaseFee',
+  'deliveryCourierShareRate',
+  'deliveryCourierPerOrder',
+  'withdrawalFeeRate',
+  'pointToFeeRate',
+  'twoYearClearEnabled',
+  'neighborDailyContactLimit',
+  'pointExchangeRate',
+  'deliveryPerKgFee',
+  'perKgFee'
+]
+
+/** 兼容 config 嵌套与根级平铺两种响应结构 */
+export function extractPropertyCompanyConfig(
+  source?: Partial<PropertyCompanyDetail & PropertyCompanyConfig> | null
+): PropertyCompanyConfig {
+  if (!source) return {}
+  const config: PropertyCompanyConfig = { ...(source.config || {}) }
+  for (const key of PROPERTY_COMPANY_CONFIG_KEYS) {
+    const value = source[key]
+    if (value !== undefined && value !== null) {
+      config[key] = value as never
+    }
+  }
+  return config
+}
+
+export function normalizePropertyCompanyDetail(
+  raw: Partial<PropertyCompanyDetail & PropertyCompanyConfig>,
+  fallbackId = ''
+): PropertyCompanyDetail {
+  return {
+    id: raw.id || fallbackId,
+    name: raw.name,
+    logoUrl: raw.logoUrl,
+    contactPhone: raw.contactPhone,
+    address: raw.address,
+    status: raw.status,
+    communityCount: raw.communityCount,
+    communities: raw.communities,
+    admins: raw.admins,
+    config: extractPropertyCompanyConfig(raw)
+  }
+}
+
+/** 表单展示用：保留小数精度，避免 0.006 被四舍五入成 1% */
+export function rateToFormPercent(rate?: number) {
+  if (rate === undefined || rate === null || Number.isNaN(rate)) return 0
+  const pct = rate <= 1 ? rate * 100 : rate
+  return Math.round(pct * 1000) / 1000
 }
 
 function resolveDashboardMetrics(overview: DashboardOverview) {
@@ -211,29 +278,58 @@ export function mapProfitSpaceDisplay(data: MerchantProfitSpace | null) {
   const pointCost = metrics.totalPointCost ?? 0
   const coinCost = metrics.totalCoinCost ?? 0
   const exchangeCost = pointCost + coinCost
-  // 盈利空间 = 总收入 - 配送费 - 积分成本 - 物业币成本
-  const profitSpace = Math.max(revenue - deliveryFee - pointCost - coinCost, 0)
+  const netProfit = metrics.netProfit ?? Math.max(revenue - deliveryFee - pointCost - coinCost, 0)
+  const profitMargin = metrics.profitMargin ?? (revenue > 0 ? netProfit / revenue : 0)
+
   const propertyShare = breakdown.propertyShare ?? 0
   const coordinatorShare = breakdown.coordinatorShare ?? 0
+  const sectorLeaderShare = breakdown.sectorLeaderShare ?? 0
+  const individualLeaderShare = breakdown.individualLeaderShare ?? 0
+  const platformShare = breakdown.platformShare ?? 0
 
-  const pct = (value: number) => (revenue > 0 ? formatPercent(value / revenue) : 0)
+  const pctOfRevenue = (value: number) => (revenue > 0 ? formatPercent(value / revenue) : 0)
+  const pctOfProfit = (value: number) => (netProfit > 0 ? formatPercent(value / netProfit) : 0)
+
+  const periodLabels: Record<string, string> = {
+    week: '本周',
+    month: '本月',
+    quarter: '本季度',
+    year: '本年'
+  }
+  const periodPrefix = data?.period ? periodLabels[data.period] || '' : ''
+  const dateRange = data?.startDate && data?.endDate ? `${data.startDate} ~ ${data.endDate}` : ''
+  const periodLabel = [periodPrefix, dateRange].filter(Boolean).join(' · ')
+
+  const mapShare = (label: string, amount: number) => ({
+    label,
+    percent: `${pctOfProfit(amount)}%`,
+    amount: `¥${formatMoney(amount)}`
+  })
 
   return {
-    merchantName: data?.platformMerchantName || '—',
+    merchantName: data?.merchantName || data?.platformMerchantName || '—',
     propertyName: data?.propertyName || '',
-    periodLabel: data?.startDate && data?.endDate ? `${data.startDate} ~ ${data.endDate}` : '',
+    periodLabel,
     totalOrders: metrics.totalOrders ?? 0,
+    totalCommission: metrics.totalCommission,
     revenue: `¥${formatMoney(revenue)}`,
-    deliveryFee: `${pct(deliveryFee)}%`,
+    deliveryFee: `${pctOfRevenue(deliveryFee)}%`,
     deliveryFeeAmount: `¥${formatMoney(deliveryFee)}`,
-    exchangeCost: `${pct(exchangeCost)}%`,
+    exchangeCost: `${pctOfRevenue(exchangeCost)}%`,
     exchangeCostDetail: `积分 ¥${formatMoney(pointCost)} + 物业币 ¥${formatMoney(coinCost)}`,
-    profitSpace: `${pct(profitSpace)}%`,
-    profitSpaceAmount: `¥${formatMoney(profitSpace)}`,
-    propertyShare: `${pct(propertyShare)}%`,
+    profitSpace: `${formatPercent(profitMargin)}%`,
+    profitSpaceAmount: `¥${formatMoney(netProfit)}`,
+    propertyShare: `${pctOfProfit(propertyShare)}%`,
     propertyShareAmount: `¥${formatMoney(propertyShare)}`,
-    coordinatorShare: `${pct(coordinatorShare)}%`,
+    coordinatorShare: `${pctOfProfit(coordinatorShare)}%`,
     coordinatorShareAmount: `¥${formatMoney(coordinatorShare)}`,
+    shareBreakdown: [
+      mapShare('物业收益', propertyShare),
+      mapShare('统筹收益', coordinatorShare),
+      mapShare('片区负责人', sectorLeaderShare),
+      mapShare('个人负责人', individualLeaderShare),
+      mapShare('平台收益', platformShare)
+    ],
     revenueGrowth: data?.comparison?.revenueGrowthRate !== undefined
       ? `${formatPercent(data.comparison.revenueGrowthRate)}%`
       : undefined,
@@ -419,4 +515,91 @@ export function mapPointsOverview(pool?: PointPool, overview?: DashboardOverview
     pcoinConsumed: consumed,
     pcoinCirculating: Math.max(circulation - consumed, 0)
   }
+}
+
+function deliveryStatusClass(status?: string) {
+  if (status === DELIVERY_STATUS.GRABBED) return 'grabbed'
+  if (status === DELIVERY_STATUS.PENDING) return 'pending'
+  if (status === DELIVERY_STATUS.DELIVERING) return 'delivering'
+  return 'completed'
+}
+
+function courierStatusClass(status?: string) {
+  return status === COURIER_STATUS.OFFLINE ? 'offline' : 'online'
+}
+
+function capacityLoadClass(load: number) {
+  if (load >= 80) return 'high'
+  if (load >= 50) return 'medium'
+  return 'low'
+}
+
+export function mapDeliveryStats(stats?: DeliveryTodayStats) {
+  const orderGrowth = stats?.orderGrowth ?? 0
+  const capacityLoad = stats?.capacityLoad ?? 0
+  const growthPrefix = orderGrowth > 0 ? '+' : ''
+  return {
+    todayOrders: stats?.todayOrders ?? 0,
+    orderGrowth,
+    orderGrowthText: `${growthPrefix}${orderGrowth}`,
+    onlineCouriers: stats?.onlineCouriers ?? 0,
+    totalCouriers: stats?.totalCouriers ?? 0,
+    todayDeliveryFee: formatMoney(stats?.todayDeliveryFee),
+    capacityLoad,
+    capacityLoadText: `${Math.round(capacityLoad)}%`,
+    loadLevelClass: capacityLoadClass(capacityLoad)
+  }
+}
+
+export function mapDeliveryCouriers(list?: DeliveryCourierItem[]) {
+  return (list || []).map(item => {
+    const name = item.name || '快递员'
+    const status = item.status || COURIER_STATUS.OFFLINE
+    return {
+      id: item.id,
+      name,
+      initials: initials(name),
+      avatarColor: avatarColor(item.id),
+      todayCompleted: item.todayCompleted ?? 0,
+      monthIncome: `¥${formatMoney(item.monthIncome)}`,
+      status,
+      statusLabel: getEnumLabel(COURIER_STATUS_LABEL, status),
+      statusClass: courierStatusClass(status)
+    }
+  })
+}
+
+export function mapRecentDeliveries(list?: RecentDeliveryItem[]) {
+  return (list || []).map((item, index) => {
+    const status = item.status || DELIVERY_STATUS.PENDING
+    return {
+      id: item.id || `delivery-${index}`,
+      time: item.time || '—',
+      residentName: item.residentName || '—',
+      productDesc: item.productDesc || '—',
+      fee: item.fee !== undefined ? `¥${formatMoney(item.fee)}` : '—',
+      status,
+      statusLabel: getEnumLabel(DELIVERY_STATUS_LABEL, status),
+      statusClass: deliveryStatusClass(status)
+    }
+  })
+}
+
+export function mapCapacityBars(hourlyData?: DeliveryHourlyData[], peakHour?: string) {
+  const items = hourlyData || []
+  const maxCount = Math.max(...items.map(item => item.deliveryCount ?? 0), 1)
+  return items.map(item => {
+    const label = item.label || (item.hour !== undefined ? `${String(item.hour).padStart(2, '0')}:00` : '')
+    const isPeak = Boolean(peakHour && label === peakHour)
+    const deliveryCount = item.deliveryCount ?? 0
+    return {
+      key: label || String(item.hour ?? ''),
+      hour: label,
+      value: Math.max(Math.round((deliveryCount / maxCount) * 100), deliveryCount > 0 ? 8 : 0),
+      deliveryCount,
+      avgResponseMinutes: item.avgResponseMinutes ?? 0,
+      isPeak,
+      peakLabel: isPeak ? '高峰' : undefined
+    }
+  })
 }

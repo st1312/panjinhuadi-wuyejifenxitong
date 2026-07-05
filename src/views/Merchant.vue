@@ -43,7 +43,7 @@
               </option>
             </select>
             <select
-              v-model="selectedProfitPlatformMerchantId"
+              v-model="selectedProfitMerchantId"
               class="periodSelect merchantSelect"
               :disabled="!profitMerchantOptions.length"
               @change="loadProfitSpace"
@@ -53,12 +53,17 @@
                 {{ m.name }}
               </option>
             </select>
-            <select v-model="profitPeriod" class="periodSelect" @change="loadProfitSpace">
-              <option value="week">本周</option>
-              <option value="month">本月</option>
-              <option value="quarter">本季度</option>
-              <option value="year">本年</option>
-            </select>
+            <div class="consumptionInput">
+              <label class="consumptionLabel">消费额</label>
+              <input
+                v-model.number="consumptionAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                class="periodSelect amountInput"
+                @change="loadProfitSpace"
+              />
+            </div>
           </div>
         </div>
         <p v-if="profitDisplay.periodLabel || profitDisplay.merchantName !== '—'" class="periodHint">
@@ -96,19 +101,17 @@
             <div class="stepLabel">盈利空间</div>
             <div class="stepValue">{{ profitDisplay.profitSpace }}</div>
             <div class="stepHint">{{ profitDisplay.profitSpaceAmount }}</div>
+            <div v-if="profitDisplay.profitGrowth" class="stepHint">较上期 ↑{{ profitDisplay.profitGrowth }}</div>
           </div>
           <div class="arrow">→</div>
           <div class="result">
-            <div class="resultItem">
-              <div class="resultLabel">物业收益</div>
-              <div class="resultValue">{{ profitDisplay.propertyShare }}</div>
-              <div class="resultHint">{{ profitDisplay.propertyShareAmount }}</div>
-            </div>
-            <div class="resultDivider" />
-            <div class="resultItem">
-              <div class="resultLabel">统筹收益</div>
-              <div class="resultValue">{{ profitDisplay.coordinatorShare }}</div>
-              <div class="resultHint">{{ profitDisplay.coordinatorShareAmount }}</div>
+            <div v-for="(item, index) in profitDisplay.shareBreakdown" :key="item.label" class="resultGroup">
+              <div v-if="index > 0" class="resultDivider" />
+              <div class="resultItem">
+                <div class="resultLabel">{{ item.label }}</div>
+                <div class="resultValue">{{ item.percent }}</div>
+                <div class="resultHint">{{ item.amount }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -506,8 +509,7 @@ import {
   formatPercent,
   mapMerchants,
   mapPlatformMerchants,
-  mapProfitSpaceDisplay,
-  resolvePlatformMerchantId
+  mapProfitSpaceDisplay
 } from '../api/mappers'
 import { ApiError } from '../api/request'
 import {
@@ -543,8 +545,8 @@ const loading = ref(true)
 const companiesLoading = ref(true)
 const profitLoading = ref(false)
 const profitError = ref('')
-const profitPeriod = ref('month')
-const selectedProfitPlatformMerchantId = ref('')
+const consumptionAmount = ref(100)
+const selectedProfitMerchantId = ref('')
 const selectedPropertyCompanyId = ref('')
 const propertyCompanies = ref<PropertyCompanyItem[]>([])
 const merchants = ref<ReturnType<typeof mapMerchants>>([])
@@ -634,21 +636,11 @@ const listTotal = computed(() =>
   viewMode.value === 'platform' ? platformMerchantTotal.value : merchantTotal.value
 )
 
-const profitMerchantOptions = computed(() => {
-  if (viewMode.value === 'platform') {
-    return Object.values(platformMerchantListCache.value)
-      .map(item => ({ id: item.id, name: item.name || '—' }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-  }
-  return Object.values(merchantListCache.value)
-    .map(item => {
-      const platformMerchantId = resolvePlatformMerchantId(item)
-      if (!platformMerchantId) return null
-      return { id: platformMerchantId, name: item.name || '—' }
-    })
-    .filter((item): item is { id: string; name: string } => item !== null)
+const profitMerchantOptions = computed(() =>
+  Object.values(merchantListCache.value)
+    .map(item => ({ id: item.id, name: item.name || '—' }))
     .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-})
+)
 
 const detailRows = computed(() => {
   const d = detailData.value
@@ -773,9 +765,8 @@ async function loadMerchants(page = currentPage.value) {
     if (!selectedCategory.value) {
       collectCategories(list)
     }
-    if (!selectedProfitPlatformMerchantId.value) {
-      const firstPlatformId = list.map(resolvePlatformMerchantId).find(Boolean)
-      if (firstPlatformId) selectedProfitPlatformMerchantId.value = firstPlatformId
+    if (!selectedProfitMerchantId.value && list.length) {
+      selectedProfitMerchantId.value = list[0].id
     }
   } catch (e) {
     console.error(e)
@@ -809,9 +800,6 @@ async function loadPlatformMerchants(page = currentPage.value) {
     if (!selectedCategory.value) {
       collectCategoriesFromPlatform(list)
     }
-    if (!selectedProfitPlatformMerchantId.value && list.length) {
-      selectedProfitPlatformMerchantId.value = list[0].id
-    }
   } catch (e) {
     console.error(e)
     platformMerchants.value = []
@@ -824,12 +812,12 @@ async function loadPlatformMerchants(page = currentPage.value) {
 
 async function onPropertyCompanyChange() {
   profitError.value = ''
-  selectedProfitPlatformMerchantId.value = ''
+  selectedProfitMerchantId.value = ''
   currentPage.value = 1
   try {
     await loadMerchants(1)
     if (profitMerchantOptions.value.length) {
-      selectedProfitPlatformMerchantId.value = profitMerchantOptions.value[0].id
+      selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
     }
     await loadProfitSpace()
   } catch (e) {
@@ -838,29 +826,29 @@ async function onPropertyCompanyChange() {
 }
 
 async function loadProfitSpace() {
-  const platformMerchantId = selectedProfitPlatformMerchantId.value
-  const propertyCompanyId = selectedPropertyCompanyId.value
-  if (!propertyCompanyId) {
+  const merchantId = selectedProfitMerchantId.value
+  if (!merchantId) {
     profitData.value = mapProfitSpaceDisplay(null)
-    profitError.value = '请选择物业公司'
+    profitError.value = profitMerchantOptions.value.length ? '请选择商家' : '暂无可用商家'
     return
   }
-  if (!platformMerchantId) {
+  const amount = Number(consumptionAmount.value)
+  if (!Number.isFinite(amount) || amount < 0) {
     profitData.value = mapProfitSpaceDisplay(null)
-    profitError.value = profitMerchantOptions.value.length ? '请选择商家' : '暂无可用平台商家'
+    profitError.value = '请输入有效的消费额'
     return
   }
   profitLoading.value = true
   profitError.value = ''
   try {
-    const data = await merchantApi.profitSpace(platformMerchantId, {
-      propertyCompanyId,
-      period: profitPeriod.value
+    const data = await merchantApi.profitSpace(merchantId, {
+      consumptionAmount: amount
     })
     profitData.value = {
       ...mapProfitSpaceDisplay(data),
-      merchantName: data.platformMerchantName
-        || profitMerchantOptions.value.find(m => m.id === platformMerchantId)?.name
+      merchantName: data.merchantName
+        || data.platformMerchantName
+        || profitMerchantOptions.value.find(m => m.id === merchantId)?.name
         || '—',
       propertyName: data.propertyName || selectedPropertyName()
     }
@@ -872,16 +860,20 @@ async function loadProfitSpace() {
   }
 }
 
-function onViewModeChange(mode: string) {
+async function onViewModeChange(mode: string) {
   viewMode.value = mode as ViewMode
   currentPage.value = 1
   appliedKeyword.value = searchKeyword.value.trim()
-  selectedProfitPlatformMerchantId.value = ''
+  selectedProfitMerchantId.value = ''
   if (mode === 'platform') {
-    loadPlatformMerchants(1).then(() => loadProfitSpace())
+    await Promise.all([loadPlatformMerchants(1), loadMerchants(1)])
   } else {
-    loadMerchants(1).then(() => loadProfitSpace())
+    await loadMerchants(1)
   }
+  if (profitMerchantOptions.value.length) {
+    selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
+  }
+  await loadProfitSpace()
 }
 
 function applyFilters() {
@@ -1154,8 +1146,8 @@ onMounted(async () => {
   try {
     await loadPropertyCompanies()
     await loadMerchants(1)
-    if (!selectedProfitPlatformMerchantId.value && profitMerchantOptions.value.length) {
-      selectedProfitPlatformMerchantId.value = profitMerchantOptions.value[0].id
+    if (!selectedProfitMerchantId.value && profitMerchantOptions.value.length) {
+      selectedProfitMerchantId.value = profitMerchantOptions.value[0].id
     }
     await loadProfitSpace()
   } finally {
@@ -1193,6 +1185,9 @@ onMounted(async () => {
 .periodSelect:disabled { cursor: default; background: #fafafc; color: #8c8c9a; }
 .companySelect { max-width: 200px; }
 .periodSelect:focus { border-color: #5c5c9e; }
+.consumptionInput { display: flex; align-items: center; gap: 8px; }
+.consumptionLabel { font-size: 13px; color: #5c5c66; white-space: nowrap; }
+.amountInput { width: 120px; max-width: 120px; }
 .periodHint { font-size: 12px; color: #8c8c9a; margin-bottom: 16px; }
 .profitLoading, .profitError { padding: 24px; text-align: center; color: #8c8c9a; font-size: 14px; }
 .profitError { color: #e05c5c; }
@@ -1206,8 +1201,9 @@ onMounted(async () => {
 .profitFlow .stepValue { font-size: 16px; font-weight: 600; color: #1f1f2e; }
 .profitFlow .stepHint { font-size: 11px; color: #8c8c9a; text-align: center; max-width: 120px; }
 .profitFlow .arrow { color: #c8c8d0; font-size: 20px; font-weight: 500; }
-.profitFlow .result { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: #ffffff; border-radius: 10px; border: 1px solid #e8e8ec; margin-left: auto; }
-.profitFlow .resultItem { text-align: center; min-width: 80px; }
+.profitFlow .result { display: flex; align-items: center; gap: 0; padding: 12px 16px; background: #ffffff; border-radius: 10px; border: 1px solid #e8e8ec; margin-left: auto; flex-wrap: wrap; }
+.profitFlow .resultGroup { display: flex; align-items: center; }
+.profitFlow .resultItem { text-align: center; min-width: 72px; padding: 0 8px; }
 .profitFlow .resultLabel { font-size: 12px; color: #8c8c9a; margin-bottom: 4px; }
 .profitFlow .resultValue { font-size: 18px; font-weight: 600; color: #5c5c9e; }
 .profitFlow .resultHint { font-size: 11px; color: #8c8c9a; margin-top: 4px; }

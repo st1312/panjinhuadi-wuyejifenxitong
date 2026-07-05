@@ -52,6 +52,12 @@ export function configureRequest(options: {
 }
 
 function withCompanyQuery(path: string) {
+  const qIndex = path.indexOf('?')
+  const pathname = qIndex >= 0 ? path.slice(0, qIndex) : path
+  if (pathname.includes('/profit-space')) {
+    return path
+  }
+
   if (
     !path.startsWith('/admin/') &&
     !path.startsWith('/reports/') &&
@@ -65,8 +71,6 @@ function withCompanyQuery(path: string) {
   const companyId = getPropertyCompanyId()
   if (!companyId) return path
 
-  const qIndex = path.indexOf('?')
-  const pathname = qIndex >= 0 ? path.slice(0, qIndex) : path
   const search = new URLSearchParams(qIndex >= 0 ? path.slice(qIndex + 1) : '')
   if (!search.has('propertyCompanyId')) {
     search.set('propertyCompanyId', companyId)

@@ -277,6 +277,8 @@ export interface MerchantAuditResult {
 export interface MerchantProfitSpace {
   platformMerchantId?: string
   platformMerchantName?: string
+  merchantId?: string
+  merchantName?: string
   propertyCompanyId?: string
   propertyName?: string
   period?: string
@@ -458,10 +460,31 @@ export interface DeliveryRule {
   propertyCompanyId?: string
 }
 
+export interface PropertyCompanyCommunity {
+  id: string
+  name?: string
+  address?: string
+  status?: string
+}
+
+export interface PropertyCompanyAdmin {
+  id: string
+  name?: string
+  phone?: string
+  role?: string
+}
+
 export interface PropertyCompanyDetail {
   id: string
   name?: string
+  logoUrl?: string
+  contactPhone?: string
+  address?: string
+  status?: string
+  communityCount?: number
   config?: PropertyCompanyConfig
+  communities?: PropertyCompanyCommunity[]
+  admins?: PropertyCompanyAdmin[]
 }
 
 export interface PropertyCompanyItem {
@@ -478,15 +501,23 @@ export interface PropertyCompanyItem {
 export interface PropertyCompanyConfig {
   propertyShareRate?: number
   coordinatorShareRate?: number
+  sectorLeaderRate?: number
+  individualLeaderRate?: number
   coinDisplayEnabled?: boolean
+  coinIssueMode?: string
   coinExpiryDays?: number
+  coinFreezeDefault?: boolean
   deliveryBaseFee?: number
+  deliveryCourierShareRate?: number
   deliveryCourierPerOrder?: number
+  withdrawalFeeRate?: number
+  pointToFeeRate?: number
+  twoYearClearEnabled?: boolean
+  neighborDailyContactLimit?: number
+  /** GET 响应可能包含 */
+  pointExchangeRate?: number
   deliveryPerKgFee?: number
   perKgFee?: number
-  twoYearClearEnabled?: boolean
-  pointExchangeRate?: number
-  pointToFeeRate?: number
 }
 
 export interface PointPool {
@@ -581,6 +612,51 @@ export interface DeliveryOrderItem {
   deliveryFee?: number
   fee?: number | string
   status?: string
+}
+
+export interface DeliveryTodayStats {
+  todayOrders?: number
+  orderGrowth?: number
+  onlineCouriers?: number
+  totalCouriers?: number
+  todayDeliveryFee?: number
+  capacityLoad?: number
+}
+
+export interface DeliveryCourierItem {
+  id: string
+  name?: string
+  todayCompleted?: number
+  monthIncome?: number
+  status?: string
+}
+
+export interface RecentDeliveryItem {
+  id?: string
+  time?: string
+  residentName?: string
+  productDesc?: string
+  fee?: number
+  status?: string
+}
+
+export interface DeliveryOverview {
+  todayStats?: DeliveryTodayStats
+  couriers?: DeliveryCourierItem[]
+  recentDeliveries?: RecentDeliveryItem[]
+}
+
+export interface DeliveryHourlyData {
+  hour?: number
+  label?: string
+  deliveryCount?: number
+  avgResponseMinutes?: number
+}
+
+export interface DeliveryCapacity {
+  dimension?: string
+  peakHour?: string
+  hourlyData?: DeliveryHourlyData[]
 }
 
 export interface DeliveryTaskItem {

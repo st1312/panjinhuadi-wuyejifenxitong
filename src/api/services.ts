@@ -6,8 +6,14 @@ import type {
   AnnouncementUpdatePayload,
   DashboardOverview,
   DeliveryOrderItem,
+  DeliveryCapacity,
+  DeliveryCourierItem,
+  DeliveryHourlyData,
+  DeliveryOverview,
   DeliveryRule,
   DeliveryTaskItem,
+  DeliveryTodayStats,
+  RecentDeliveryItem,
   LeaderItem,
   LoginResult,
   MerchantItem,
@@ -275,13 +281,12 @@ export const merchantApi = {
   },
 
   profitSpace(
-    platformMerchantId: string,
-    params: { propertyCompanyId: string; period?: string }
+    merchantId: string,
+    params: { consumptionAmount: number }
   ) {
     return request<MerchantProfitSpace>(
-      `/admin/platform-merchants/${platformMerchantId}/profit-space${buildQuery({
-        propertyCompanyId: params.propertyCompanyId,
-        period: params.period
+      `/admin/merchants/${merchantId}/profit-space${buildQuery({
+        consumptionAmount: params.consumptionAmount
       })}`
     )
   }
@@ -370,6 +375,18 @@ export const announcementApi = {
 
 export const deliveryApi = {
 
+  overview(params: Record<string, string | number | undefined> = {}) {
+
+    return request<DeliveryOverview>(`/admin/deliveries/overview${buildQuery(params)}`)
+
+  },
+
+  capacity(params: Record<string, string | number | undefined> = {}) {
+
+    return request<DeliveryCapacity>(`/admin/deliveries/capacity${buildQuery(params)}`)
+
+  },
+
   rules(params: Record<string, string | number | undefined> = {}) {
 
     return request<PageResult<DeliveryRule>>(`/admin/delivery-rules${buildQuery(params)}`)
@@ -422,7 +439,7 @@ export const configApi = {
 
   updateConfig(id: string, config: PropertyCompanyConfig) {
 
-    return request<PropertyCompanyDetail>(`/admin/property-companies/${id}/config`, {
+    return request<PropertyCompanyDetail | PropertyCompanyConfig>(`/admin/property-companies/${id}/config`, {
 
       method: 'PATCH',
 
