@@ -464,10 +464,13 @@ export interface PropertyCompanyConfig {
 }
 
 export interface PointPool {
+  propertyCompanyId?: string
+  propertyCompanyName?: string
   balance?: number
-  equivalentAmount?: number
   totalIn?: number
   totalOut?: number
+  equivalentAmount?: number
+  updatedAt?: string
 }
 
 export interface DashboardOverview {

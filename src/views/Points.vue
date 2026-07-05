@@ -8,7 +8,7 @@
             <IconSvg name="wallet" class="icon" />
           </div>
           <div class="body">
-            <div class="value">¥ {{ overview.poolAmount }}</div>
+            <div class="value">{{ poolLoading ? '加载中...' : `¥ ${poolOverview.poolAmount}` }}</div>
             <div class="tag">
               <IconSvg name="info" />
               <span>来源：兑换比例差额自动注入</span>
@@ -42,14 +42,15 @@
             <SegmentedControl :tabs="tabs" v-model="activeTab" />
           </div>
           <div class="toolbar">
-            <div class="search">
+            <form class="search" @submit.prevent="submitSearch">
               <IconSvg name="search" />
-              <input type="text" placeholder="搜索房号、姓名..." />
-            </div>
-            <button class="btnPrimary">
-              <IconSvg name="plus" />
-              <span>批量发放</span>
-            </button>
+              <input
+                v-model="searchKeyword"
+                type="search"
+                placeholder="搜索房号、姓名..."
+                @input="onSearchInput"
+              />
+            </form>
           </div>
         </div>
         <table class="table">
@@ -66,6 +67,9 @@
           <tbody>
             <tr v-if="loading">
               <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
+            </tr>
+            <tr v-else-if="!users.length">
+              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">暂无数据</td>
             </tr>
             <template v-else>
             <tr v-for="user in users" :key="user.id">
@@ -96,14 +100,13 @@
           </tbody>
         </table>
         <div class="footer">
-          <span class="total">共 {{ totalRecords.toLocaleString() }} 条记录，显示 1-{{ users.length }} 条</span>
-          <div class="pagination">
-            <button class="pageBtn" disabled>&lt;</button>
-            <button class="pageBtn active">1</button>
-            <button class="pageBtn">2</button>
-            <button class="pageBtn">3</button>
-            <span class="ellipsis">...</span>
-            <button class="pageBtn">&gt;</button>
+          <span class="total">
+            显示 {{ pageStart }} 到 {{ pageEnd }}，共 {{ totalRecords.toLocaleString() }} 条记录
+          </span>
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="pageBtn" :disabled="currentPage <= 1 || loading" @click="changePage(currentPage - 1)">&lt;</button>
+            <span class="pageInfo">{{ currentPage }} / {{ totalPages }}</span>
+            <button class="pageBtn" :disabled="currentPage >= totalPages || loading" @click="changePage(currentPage + 1)">&gt;</button>
           </div>
         </div>
       </div>
@@ -153,14 +156,19 @@
 
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
 import { dashboardApi, pointApi, residentApi } from '../api/services'
-import { mapPointsOverview, mapPointsUsers } from '../api/mappers'
+import { mapPointPoolOverview, mapPointsOverview, mapPointsUsers } from '../api/mappers'
+import { RESIDENT_STATUS } from '../constants/enums'
+
+const PAGE_SIZE = 20
 
 const loading = ref(true)
+const poolLoading = ref(true)
+const poolOverview = ref(mapPointPoolOverview())
 const overview = ref(mapPointsOverview())
 const formattedTotal = computed(() => overview.value.pcoinTotal.toLocaleString())
 const formattedConsumed = computed(() => overview.value.pcoinConsumed.toLocaleString())
@@ -168,11 +176,17 @@ const formattedCirculating = computed(() => overview.value.pcoinCirculating.toLo
 
 const users = ref<ReturnType<typeof mapPointsUsers>>([])
 const totalRecords = ref(0)
+const currentPage = ref(1)
+const totalPages = ref(1)
 const tabs = [
   { code: 'all', name: '全部用户' },
-  { code: 'overdue', name: '仅欠费' }
+  { code: RESIDENT_STATUS.FROZEN, name: '已冻结' }
 ]
 const activeTab = ref('all')
+const searchKeyword = ref('')
+const appliedKeyword = ref('')
+
+let searchTimer: ReturnType<typeof setTimeout>
 
 const trendData = ref<Array<{ week: string; value: number; label: string; active: boolean }>>([
   { week: 'W1', value: 30, label: '', active: false }
@@ -184,19 +198,73 @@ const consumeData = ref([
   { name: '礼品中心', value: 10, color: '#3aaf7d' }
 ])
 
-onMounted(async () => {
+const pageStart = computed(() => {
+  if (!totalRecords.value) return 0
+  return (currentPage.value - 1) * PAGE_SIZE + 1
+})
+
+const pageEnd = computed(() => {
+  return Math.min(currentPage.value * PAGE_SIZE, totalRecords.value)
+})
+
+async function loadUsers(page = currentPage.value) {
+  loading.value = true
   try {
-    const [pool, dashOverview, residents] = await Promise.all([
-      pointApi.pool(),
-      dashboardApi.overview(),
-      residentApi.list({ page: 1, pageSize: 20 })
-    ])
-    overview.value = mapPointsOverview(pool.balance ?? pool.equivalentAmount, dashOverview)
-    users.value = mapPointsUsers(residents.list || [])
-    totalRecords.value = residents.pagination?.total ?? users.value.length
+    const res = await residentApi.list({
+      page,
+      pageSize: PAGE_SIZE,
+      keyword: appliedKeyword.value || undefined,
+      status: activeTab.value === 'all' ? undefined : activeTab.value
+    })
+    users.value = mapPointsUsers(res.list || [])
+    totalRecords.value = res.pagination?.total ?? users.value.length
+    currentPage.value = res.pagination?.page ?? page
+    totalPages.value = res.pagination?.totalPages ?? 1
+  } catch (e) {
+    console.error(e)
+    users.value = []
+    totalRecords.value = 0
+    totalPages.value = 1
   } finally {
     loading.value = false
   }
+}
+
+function changePage(page: number) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  loadUsers(page)
+}
+
+function submitSearch() {
+  clearTimeout(searchTimer)
+  appliedKeyword.value = searchKeyword.value.trim()
+  currentPage.value = 1
+  loadUsers(1)
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(submitSearch, 300)
+}
+
+watch(activeTab, () => {
+  currentPage.value = 1
+  loadUsers(1)
+})
+
+onMounted(async () => {
+  try {
+    const [pool, dashOverview] = await Promise.all([
+      pointApi.pool(),
+      dashboardApi.overview()
+    ])
+    poolOverview.value = mapPointPoolOverview(pool)
+    overview.value = mapPointsOverview(pool, dashOverview)
+  } finally {
+    poolLoading.value = false
+  }
+  loadUsers(1)
 })
 const radius = 45
 const circumference = 2 * Math.PI * radius
@@ -299,8 +367,6 @@ const segments = computed(() => {
 .assetTable .search svg { width: 18px; height: 18px; color: #8c8c9a; }
 .assetTable .search input { border: none; background: transparent; font-size: 14px; color: #1f1f2e; outline: none; flex: 1; }
 .assetTable .search input::placeholder { color: #8c8c9a; }
-.assetTable .btnPrimary { display: flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #ffffff; font-size: 14px; }
-.assetTable .btnPrimary svg { width: 18px; height: 18px; }
 .assetTable .table { width: 100%; font-size: 14px; }
 .assetTable .table thead th { text-align: left; padding: 14px 24px; color: #8c8c9a; font-weight: 500; background: #fafafc; border-bottom: 1px solid #f0f0f3; }
 .assetTable .table tbody td { padding: 16px 24px; color: #1f1f2e; border-bottom: 1px solid #f0f0f3; vertical-align: middle; }
@@ -328,7 +394,7 @@ const segments = computed(() => {
 .assetTable .pageBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; }
 .assetTable .pageBtn:disabled { color: #c8c8d0; cursor: not-allowed; }
 .assetTable .pageBtn.active { background: #5c5c9e; color: #ffffff; border-color: #5c5c9e; }
-.assetTable .ellipsis { color: #8c8c9a; padding: 0 4px; }
+.assetTable .pageInfo { font-size: 13px; color: #8c8c9a; min-width: 48px; text-align: center; }
 
 .trendChart { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .trendChart .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }

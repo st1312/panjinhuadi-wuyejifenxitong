@@ -7,6 +7,7 @@ import type {
   PermissionItemDto,
   PermissionChangeLog,
   PlatformMerchantItem,
+  PointPool,
   ReportsOverview,
   ResidentItem,
   RolePresetDto
@@ -388,12 +389,30 @@ export function mapReportsToDashboardOverview(reports: ReportsOverview, period: 
   }
 }
 
-export function mapPointsOverview(poolBalance?: number, overview?: DashboardOverview) {
+/** GET /admin/point-pools — 积分池概览卡片 */
+export function mapPointPoolOverview(pool?: PointPool) {
+  const amount = pool?.equivalentAmount ?? pool?.balance
+  return {
+    poolAmount: formatMoney(amount),
+    balance: pool?.balance ?? 0,
+    totalIn: pool?.totalIn ?? 0,
+    totalOut: pool?.totalOut ?? 0,
+    propertyCompanyName: pool?.propertyCompanyName ?? '',
+    updatedAt: pool?.updatedAt ?? ''
+  }
+}
+
+export function mapPointsOverview(pool?: PointPool, overview?: DashboardOverview) {
   const summary = overview?.summary || {}
   const circulation = overview?.coinTotalIssued ?? summary.totalCoinIssued ?? 0
   const consumed = summary.totalCoinRedeemed ?? Math.round(circulation * 0.25)
+  const poolOverview = mapPointPoolOverview(pool)
+  const hasPoolData = pool?.equivalentAmount != null || pool?.balance != null
   return {
-    poolAmount: formatMoney(poolBalance ?? overview?.pointPoolBalance ?? summary.totalPointsIssued),
+    ...poolOverview,
+    poolAmount: hasPoolData
+      ? poolOverview.poolAmount
+      : formatMoney(overview?.pointPoolBalance ?? summary.totalPointsIssued),
     pcoinTotal: circulation,
     pcoinConsumed: consumed,
     pcoinCirculating: Math.max(circulation - consumed, 0)
