@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="page">
       <div class="header">
         <div>
@@ -487,12 +486,10 @@
         </div>
       </div>
     </Teleport>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
 import { merchantApi, propertyCompanyApi } from '../api/services'

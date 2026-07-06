@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="page">
       <h1 class="title">权限配置</h1>
       <p class="desc">基于共享权限池为账号分配权限，可通过角色快捷预设一键配置后再微调。</p>
@@ -140,14 +139,12 @@
         </table>
       </section>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePermissionStore } from '../stores/permission'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 
 const store = usePermissionStore()

@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="page">
       <div class="header">
         <div>
@@ -257,12 +256,10 @@
         </div>
       </div>
     </Teleport>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import { announcementApi, residentApi } from '../api/services'
 import { mapAnnouncements } from '../api/mappers'

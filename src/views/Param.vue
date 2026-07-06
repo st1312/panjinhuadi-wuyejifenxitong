@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="page">
       <div class="header">
         <div>
@@ -215,12 +214,10 @@
         </div>
       </template>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import { configApi } from '../api/services'
 import {

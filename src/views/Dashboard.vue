@@ -1,6 +1,5 @@
 <template>
-  <AppLayout>
-    <div class="page">
+  <div class="page">
       <div class="header">
         <div>
           <h1 class="title">总览</h1>
@@ -16,7 +15,16 @@
       <div v-if="loading" class="loading">加载中...</div>
       <template v-else>
         <div class="stats">
-          <div v-for="stat in stats" :key="stat.code" class="statCard" :class="stat.variant === 'purple' ? 'purple' : stat.variant === 'green' ? 'green' : ''">
+          <div
+            v-for="(stat, index) in stats"
+            :key="stat.code"
+            class="statCard slideIn"
+            :class="[
+              stat.variant === 'purple' ? 'purple' : stat.variant === 'green' ? 'green' : '',
+              index % 2 === 0 ? 'slideFromLeft' : 'slideFromRight'
+            ]"
+            :style="{ animationDelay: `${index * 0.08}s` }"
+          >
             <div class="top">
               <div class="icon"><IconSvg :name="stat.icon" /></div>
               <div v-if="stat.badge" class="badge"><IconSvg name="arrowUp" /><span>{{ stat.badge }}</span></div>
@@ -26,7 +34,7 @@
           </div>
         </div>
         <div class="panels">
-          <div class="topMerchantsPanel">
+          <div class="topMerchantsPanel slideIn slideFromLeft" :style="{ animationDelay: '0.52s' }">
             <h3 class="title">商家业绩 TOP</h3>
             <table v-if="topMerchants.length" class="merchantTable">
               <thead>
@@ -37,7 +45,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in topMerchants" :key="item.id">
+                <tr
+                  v-for="(item, index) in topMerchants"
+                  :key="item.id"
+                  class="slideIn"
+                  :class="index % 2 === 0 ? 'slideFromLeft' : 'slideFromRight'"
+                  :style="{ animationDelay: `${0.6 + index * 0.06}s` }"
+                >
                   <td>{{ item.name }}</td>
                   <td>{{ item.orderCount }}</td>
                   <td>{{ item.revenue }}</td>
@@ -46,12 +60,18 @@
             </table>
             <p v-else class="panelEmpty">暂无商家业绩数据</p>
           </div>
-          <div class="recentActivity compact">
+          <div class="recentActivity compact slideIn slideFromRight" :style="{ animationDelay: '0.58s' }">
             <div class="header">
               <h3 class="title">最近动态</h3>
             </div>
             <ul v-if="recentActivity.length" class="activityList">
-              <li v-for="item in recentActivity" :key="item.id" class="activityItem">
+              <li
+                v-for="(item, index) in recentActivity"
+                :key="item.id"
+                class="activityItem slideIn"
+                :class="index % 2 === 0 ? 'slideFromLeft' : 'slideFromRight'"
+                :style="{ animationDelay: `${0.66 + index * 0.06}s` }"
+              >
                 <span class="activityTime">{{ item.timestamp }}</span>
                 <span class="activityDesc">{{ item.description }}</span>
               </li>
@@ -59,7 +79,7 @@
             <p v-else class="activityEmpty">暂无动态</p>
           </div>
         </div>
-        <div class="recentLog">
+        <div class="recentLog slideIn slideFromLeft" :style="{ animationDelay: '0.64s' }">
           <div class="header">
             <h3 class="title">最近操作日志</h3>
             <button
@@ -79,7 +99,7 @@
               <tr v-else-if="!displayedLogs.length">
                 <td colspan="4" class="emptyCell">暂无操作日志</td>
               </tr>
-              <tr v-for="log in displayedLogs" :key="log.id || log.time + log.content">
+              <tr v-for="(log, index) in displayedLogs" :key="log.id || log.time + log.content" class="slideIn" :class="index % 2 === 0 ? 'slideFromLeft' : 'slideFromRight'" :style="{ animationDelay: `${0.72 + index * 0.05}s` }">
                 <td>{{ log.time }}</td>
                 <td>{{ log.operator }}</td>
                 <td>{{ log.content }}</td>
@@ -312,12 +332,10 @@
         </div>
       </div>
     </Teleport>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import ResidentSearchSelect from '../components/ResidentSearchSelect.vue'
 import FreezeRecordSelect from '../components/FreezeRecordSelect.vue'
@@ -727,6 +745,19 @@ onMounted(async () => {
 .merchantTable tbody tr:last-child td { border-bottom: none; }
 .panelEmpty { font-size: 14px; color: #8c8c9a; padding: 24px 0; text-align: center; }
 .statCard { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-width: 0; }
+.slideIn { animation: slideIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.slideFromLeft { --slide-x: -32px; }
+.slideFromRight { --slide-x: 32px; }
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(var(--slide-x));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 .statCard .top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
 .statCard .icon { width: 40px; height: 40px; border-radius: 10px; background: #f4f5f7; color: #5c5c66; display: flex; align-items: center; justify-content: center; }
 .statCard .icon svg { width: 22px; height: 22px; }

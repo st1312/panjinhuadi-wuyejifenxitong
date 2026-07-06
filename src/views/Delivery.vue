@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="page">
       <div class="header">
         <div>
@@ -186,12 +185,10 @@
         </div>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import { deliveryApi } from '../api/services'
 import {

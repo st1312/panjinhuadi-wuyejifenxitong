@@ -1,24 +1,21 @@
 <template>
-  <AppLayout>
-    <div class="page">
-      <div class="icon">
-        <svg viewBox="0 0 120 120" fill="none">
-          <rect x="10" y="30" width="100" height="60" rx="8" stroke="#d0d0d8" stroke-width="2" fill="#fafafc" />
-          <path d="M35 50h50M35 60h30M35 70h40" stroke="#d0d0d8" stroke-width="2" stroke-linecap="round" />
-          <circle cx="90" cy="80" r="12" fill="#5c5c9e" opacity="0.15" />
-          <path d="M85 80l4 4 6-8" stroke="#5c5c9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </div>
-      <h2 class="title">{{ title }}</h2>
-      <p class="desc">页面开发中，敬请期待</p>
+  <div class="page">
+    <div class="icon">
+      <svg viewBox="0 0 120 120" fill="none">
+        <rect x="10" y="30" width="100" height="60" rx="8" stroke="#d0d0d8" stroke-width="2" fill="#fafafc" />
+        <path d="M35 50h50M35 60h30M35 70h40" stroke="#d0d0d8" stroke-width="2" stroke-linecap="round" />
+        <circle cx="90" cy="80" r="12" fill="#5c5c9e" opacity="0.15" />
+        <path d="M85 80l4 4 6-8" stroke="#5c5c9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
     </div>
-  </AppLayout>
+    <h2 class="title">{{ title }}</h2>
+    <p class="desc">页面开发中，敬请期待</p>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import AppLayout from '../layouts/AppLayout.vue'
 
 const route = useRoute()
 const title = computed(() => (route.meta.title as string) || '')

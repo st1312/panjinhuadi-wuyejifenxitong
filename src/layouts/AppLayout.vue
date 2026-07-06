@@ -4,7 +4,13 @@
     <div class="appLayoutRight">
       <AppHeader />
       <main class="appLayoutMain">
-        <slot />
+        <RouterView v-slot="{ Component, route }">
+          <Transition name="page-fade" mode="out-in">
+            <div v-if="Component" :key="route.fullPath" class="pageView">
+              <component :is="Component" />
+            </div>
+          </Transition>
+        </RouterView>
       </main>
     </div>
   </div>
@@ -35,5 +41,22 @@ import AppHeader from '../components/AppHeader.vue'
   flex: 1;
   overflow: auto;
   padding: 24px;
+  min-width: 0;
+}
+
+.pageView {
+  min-height: 100%;
+}
+</style>
+
+<style>
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.22s ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
 }
 </style>

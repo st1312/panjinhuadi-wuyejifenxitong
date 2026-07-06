@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="page">
       <div class="overview">
         <div class="card purple">
@@ -215,13 +214,11 @@
         </div>
       </div>
     </Teleport>
-  </AppLayout>
 </template>
 
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
 import { dashboardApi, pointApi, residentApi } from '../api/services'
