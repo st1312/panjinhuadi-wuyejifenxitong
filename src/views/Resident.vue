@@ -108,32 +108,6 @@
           </div>
         </div>
       </div>
-      <div class="stats">
-        <div class="statCard">
-          <div class="icon"><IconSvg name="person" /></div>
-          <div class="info">
-            <div class="label">今日新增注册</div>
-            <div class="value">
-              {{ residentBottomStats.newToday }}名
-              <span class="trend"><IconSvg name="trend" />{{ residentBottomStats.newTrend }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="statCard">
-          <div class="icon"><IconSvg name="people" /></div>
-          <div class="info">
-            <div class="label">平均家庭人数</div>
-            <div class="value">{{ residentBottomStats.avgFamily }}</div>
-          </div>
-        </div>
-        <div class="statCard">
-          <div class="icon"><IconSvg name="home" /></div>
-          <div class="info">
-            <div class="label">入住率</div>
-            <div class="value">{{ residentBottomStats.occupancyRate }}</div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <Teleport to="body">
@@ -159,8 +133,19 @@
               </select>
             </div>
             <div class="field">
-              <label class="label">小区 ID <span class="required">*</span></label>
-              <input v-model="createForm.communityId" type="text" class="input" required />
+              <label class="label">所属小区 <span class="required">*</span></label>
+              <select
+                v-model="createForm.communityId"
+                class="input"
+                required
+                :disabled="communitiesLoading || !communities.length"
+              >
+                <option v-if="communitiesLoading" value="">加载小区中...</option>
+                <option v-else-if="!communities.length" value="">暂无可用小区</option>
+                <option v-for="item in communities" :key="item.id" :value="item.id">
+                  {{ item.name || item.id }}
+                </option>
+              </select>
             </div>
             <div class="fieldRow">
               <div class="field">
@@ -369,10 +354,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
-import { dashboardApi, residentApi } from '../api/services'
+import { propertyCompanyApi, residentApi } from '../api/services'
 import { ApiError } from '../api/request'
-import type { ResidentItem, ResidentUpdatePayload } from '../api/types'
-import { formatMoney, formatPercent, mapResidents } from '../api/mappers'
+import type { PropertyCompanyCommunity, ResidentItem, ResidentUpdatePayload } from '../api/types'
+import { formatMoney, mapResidents } from '../api/mappers'
 import {
   RESIDENT_STATUS,
   RESIDENT_STATUS_OPTIONS,
@@ -387,7 +372,6 @@ import {
 import { useAuthStore } from '../stores/auth'
 
 const PAGE_SIZE = 20
-const DEFAULT_COMMUNITY_ID = import.meta.env.VITE_COMMUNITY_ID || 'com_demo001'
 
 const GENDER_OPTIONS = [
   { value: 0, label: '未知' },
@@ -411,14 +395,10 @@ const residents = ref<ReturnType<typeof mapResidents>>([])
 const residentTotal = ref(0)
 const currentPage = ref(1)
 const totalPages = ref(1)
-const residentBottomStats = ref({
-  newToday: 0,
-  newTrend: '0%',
-  avgFamily: '—',
-  occupancyRate: '—'
-})
 
 const createModalOpen = ref(false)
+const communities = ref<PropertyCompanyCommunity[]>([])
+const communitiesLoading = ref(false)
 const detailModalOpen = ref(false)
 const editModalOpen = ref(false)
 const statusModalOpen = ref(false)
@@ -438,7 +418,7 @@ const createForm = ref({
   name: '',
   phone: '',
   userType: RESIDENT_USER_TYPE.OWNER,
-  communityId: DEFAULT_COMMUNITY_ID,
+  communityId: '',
   building: '',
   unit: '',
   room: '',
@@ -606,7 +586,7 @@ function openCreateModal() {
     name: '',
     phone: '',
     userType: RESIDENT_USER_TYPE.OWNER,
-    communityId: DEFAULT_COMMUNITY_ID,
+    communityId: '',
     building: '',
     unit: '',
     room: '',
@@ -614,6 +594,28 @@ function openCreateModal() {
     age: undefined
   }
   createModalOpen.value = true
+  loadCommunities()
+}
+
+async function loadCommunities() {
+  const companyId = authStore.propertyCompanyId
+  if (!companyId) {
+    communities.value = []
+    return
+  }
+  communitiesLoading.value = true
+  try {
+    const res = await propertyCompanyApi.communities(companyId)
+    communities.value = res.list || []
+    if (communities.value.length && !createForm.value.communityId) {
+      createForm.value.communityId = communities.value[0].id
+    }
+  } catch (e) {
+    communities.value = []
+    formError.value = e instanceof ApiError ? e.message : '小区列表加载失败'
+  } finally {
+    communitiesLoading.value = false
+  }
 }
 
 function closeCreateModal() {
@@ -626,6 +628,10 @@ async function submitCreate() {
   const companyId = authStore.propertyCompanyId
   if (!companyId) {
     formError.value = '未获取到物业公司 ID，请重新登录'
+    return
+  }
+  if (!createForm.value.communityId.trim()) {
+    formError.value = '请选择小区'
     return
   }
   formSubmitting.value = true
@@ -820,19 +826,7 @@ watch(activeStatus, () => {
 
 onMounted(async () => {
   try {
-    const overview = await dashboardApi.overview()
     await Promise.all([loadBuildingOptions(), loadResidents(1)])
-
-    const summary = overview.summary || {}
-    const trends = overview.trends || {}
-    residentBottomStats.value = {
-      newToday: summary.newResidents ?? 0,
-      newTrend: trends.residentGrowthRate !== undefined ? `${formatPercent(trends.residentGrowthRate)}%` : '0%',
-      avgFamily: '—',
-      occupancyRate: summary.propertyFeeCollectionRate !== undefined
-        ? `${formatPercent(summary.propertyFeeCollectionRate)}%`
-        : '—'
-    }
   } catch (e) {
     console.error(e)
     loading.value = false
@@ -929,15 +923,6 @@ onMounted(async () => {
 .table .pageInfo { font-size: 13px; color: #8c8c9a; min-width: 48px; text-align: center; }
 .table .pageBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .table .pageBtn:disabled { color: #c8c8d0; cursor: not-allowed; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.statCard { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; }
-.statCard .icon { width: 48px; height: 48px; border-radius: 50%; background: #f4f5f7; color: #5c5c9e; display: flex; align-items: center; justify-content: center; }
-.statCard .icon svg { width: 24px; height: 24px; }
-.statCard .info { flex: 1; }
-.statCard .label { font-size: 13px; color: #8c8c9a; margin-bottom: 6px; }
-.statCard .value { font-size: 20px; font-weight: 600; color: #1f1f2e; display: flex; align-items: center; gap: 8px; }
-.statCard .trend { display: flex; align-items: center; gap: 2px; font-size: 12px; color: #3aaf7d; }
-.statCard .trend svg { width: 12px; height: 12px; }
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -1024,7 +1009,6 @@ onMounted(async () => {
   .filters .select { flex: 1; }
   .table { overflow-x: auto; }
   .table table { min-width: 860px; }
-  .stats { grid-template-columns: 1fr; }
   .fieldRow { grid-template-columns: 1fr; }
   .detailGrid { grid-template-columns: 1fr; }
 }

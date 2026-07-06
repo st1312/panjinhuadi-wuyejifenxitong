@@ -134,14 +134,13 @@
               <p class="hint">从冻结记录列表中选择要解冻的账号</p>
             </div>
             <div class="field">
-              <label class="label">{{ coinModal === 'freeze' ? '冻结原因' : '解冻原因' }}</label>
+              <label class="label">{{ coinModal === 'freeze' ? '冻结原因（选填）' : '解冻原因（选填）' }}</label>
               <textarea
                 v-model="coinForm.reason"
                 class="textarea"
                 rows="3"
                 maxlength="200"
                 :placeholder="coinModal === 'freeze' ? '请输入冻结原因' : '请输入解冻原因'"
-                required
               />
             </div>
             <p v-if="coinError" class="error">{{ coinError }}</p>
@@ -661,7 +660,6 @@ async function submitCoinModal() {
     coinError.value = '请选择冻结记录'
     return
   }
-  if (!reason) return
 
   coinSubmitting.value = true
   coinError.value = ''
@@ -669,16 +667,17 @@ async function submitCoinModal() {
 
   try {
     if (coinModal.value === 'freeze') {
-      const result = await residentApi.freezeCoin(residentId, {
-        amount: coinForm.value.amount,
-        reason
-      })
+      const payload: { amount: number; reason?: string } = {
+        amount: coinForm.value.amount
+      }
+      if (reason) payload.reason = reason
+      const result = await residentApi.freezeCoin(residentId, payload)
       coinSuccess.value = `已成功冻结 ${result.residentName} 的物业币 ${result.amount} 元`
     } else {
-      const payload: { reason: string; frozenRecordId: string } = {
-        reason,
+      const payload: { frozenRecordId: string; reason?: string } = {
         frozenRecordId: coinForm.value.frozenRecordId.trim()
       }
+      if (reason) payload.reason = reason
       const result = await residentApi.unfreezeCoin(residentId, payload)
       coinSuccess.value = `已成功解冻 ${result.unfrozenAmount} 元，当前余额 ${result.newBalance} 元`
     }

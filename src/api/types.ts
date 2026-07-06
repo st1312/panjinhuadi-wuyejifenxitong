@@ -107,7 +107,7 @@ export interface ResidentStatusPayload {
 
 export interface CoinFreezePayload {
   amount: number
-  reason: string
+  reason?: string
 }
 
 export interface CoinFreezeResult {
@@ -123,7 +123,7 @@ export interface CoinFreezeResult {
 }
 
 export interface CoinUnfreezePayload {
-  reason: string
+  reason?: string
   frozenRecordId?: string
 }
 
@@ -464,7 +464,10 @@ export interface PropertyCompanyCommunity {
   id: string
   name?: string
   address?: string
+  totalBuildings?: number
+  totalUnits?: number
   status?: string
+  createdAt?: string
 }
 
 export interface PropertyCompanyAdmin {

@@ -37,6 +37,7 @@ import type {
   PropertyCompanyConfig,
   PropertyCompanyDetail,
   PropertyCompanyItem,
+  PropertyCompanyCommunity,
   ResidentItem,
   ResidentCreatePayload,
   ResidentUpdatePayload,
@@ -423,6 +424,10 @@ export const propertyCompanyApi = {
       {},
       auth
     )
+  },
+
+  communities(id: string) {
+    return request<PageResult<PropertyCompanyCommunity>>(`/property-companies/${id}/communities`)
   }
 
 }
