@@ -549,6 +549,7 @@ export interface DashboardOverview {
     totalOrders?: number
     totalRevenue?: number
     totalResidents?: number
+    totalFamilies?: number
     activeResidents?: number
     newResidents?: number
     totalMerchants?: number
@@ -556,6 +557,8 @@ export interface DashboardOverview {
     totalPointsIssued?: number
     totalPointsRedeemed?: number
     totalCoinIssued?: number
+    coinConsumed?: number
+    coinInCirculation?: number
     totalCoinRedeemed?: number
     propertyFeeCollectionRate?: number
     propertyFeeAmount?: number
@@ -565,9 +568,12 @@ export interface DashboardOverview {
     orderGrowthRate?: number
     revenueGrowthRate?: number
     residentGrowthRate?: number
+    newResidentGrowthRate?: number
     merchantGrowthRate?: number
   }
   topMerchants?: Array<{
+    id?: string
+    name?: string
     merchantId?: string
     merchantName?: string
     orderCount?: number
@@ -576,6 +582,7 @@ export interface DashboardOverview {
   recentActivity?: Array<{
     type?: string
     description?: string
+    time?: string
     timestamp?: string
   }>
 }

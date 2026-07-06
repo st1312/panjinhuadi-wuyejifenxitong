@@ -19,12 +19,7 @@
           </option>
         </select>
       </div>
-      <button class="appHeaderIconBtn">
-        <IconSvg name="bell" />
-      </button>
-      <button class="appHeaderIconBtn">
-        <IconSvg name="setting" />
-      </button>
+      
       <div class="appHeaderSeparator" />
       <button class="appHeaderLogout" @click="handleLogout">
         <span>退出</span>

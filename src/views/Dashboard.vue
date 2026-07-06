@@ -25,38 +25,39 @@
             <div class="value">{{ stat.value }}</div>
           </div>
         </div>
-        <div class="charts">
-          <div class="collectionRate">
-            <h3 class="title">物业费收缴率</h3>
-            <div class="chart">
-              <svg viewBox="0 0 120 120" class="svg">
-                <circle class="track" cx="60" cy="60" r="50" />
-                <circle class="progress" cx="60" cy="60" r="50" :stroke-dasharray="collectionDashArray" :stroke-dashoffset="collectionDashOffset" />
-              </svg>
-              <div class="text">
-                <div class="percent">{{ collectionRate }}%</div>
-                <div class="hint">已缴纳</div>
-              </div>
+        <div class="panels">
+          <div class="topMerchantsPanel">
+            <h3 class="title">商家业绩 TOP</h3>
+            <table v-if="topMerchants.length" class="merchantTable">
+              <thead>
+                <tr>
+                  <th>商家</th>
+                  <th>订单数</th>
+                  <th>收入</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in topMerchants" :key="item.id">
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.orderCount }}</td>
+                  <td>{{ item.revenue }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="panelEmpty">暂无商家业绩数据</p>
+          </div>
+          <div class="recentActivity compact">
+            <div class="header">
+              <h3 class="title">最近动态</h3>
             </div>
+            <ul v-if="recentActivity.length" class="activityList">
+              <li v-for="item in recentActivity" :key="item.id" class="activityItem">
+                <span class="activityTime">{{ item.timestamp }}</span>
+                <span class="activityDesc">{{ item.description }}</span>
+              </li>
+            </ul>
+            <p v-else class="activityEmpty">暂无动态</p>
           </div>
-          <div class="pendingAudit">
-            <h3 class="title">待审核</h3>
-            <div class="body">
-              <div class="count">{{ pendingAuditCount }}</div>
-              <div class="hint">条待处理申请</div>
-            </div>
-          </div>
-        </div>
-        <div v-if="recentActivity.length" class="recentActivity">
-          <div class="header">
-            <h3 class="title">最近动态</h3>
-          </div>
-          <ul class="activityList">
-            <li v-for="item in recentActivity" :key="item.id" class="activityItem">
-              <span class="activityTime">{{ item.timestamp }}</span>
-              <span class="activityDesc">{{ item.description }}</span>
-            </li>
-          </ul>
         </div>
         <div class="recentLog">
           <div class="header">
@@ -324,7 +325,7 @@ import FreezeRecordSelect from '../components/FreezeRecordSelect.vue'
 import PendingMerchantSelect from '../components/PendingMerchantSelect.vue'
 import { dashboardApi, announcementApi, merchantApi, operationLogApi, residentApi } from '../api/services'
 import type { AnnouncementCreatePayload, MerchantAuditPayload, MerchantItem } from '../api/types'
-import { mapCollectionRate, mapDashboardStats, mapOperationLogs, mapPendingAuditCount, mapPeriodDescription, mapRecentActivity } from '../api/mappers'
+import { mapDashboardStats, mapOperationLogs, mapPeriodDescription, mapRecentActivity, mapTopMerchants } from '../api/mappers'
 import { ApiError } from '../api/request'
 import { getAccessToken } from '../stores/tokenStore'
 import { useAuthStore } from '../stores/auth'
@@ -342,8 +343,7 @@ import {
 const loading = ref(true)
 const periodDesc = ref('今日运营数据及最近动态')
 const stats = ref<ReturnType<typeof mapDashboardStats>>([])
-const collectionRate = ref(0)
-const pendingAuditCount = ref(0)
+const topMerchants = ref<ReturnType<typeof mapTopMerchants>>([])
 const recentActivity = ref<ReturnType<typeof mapRecentActivity>>([])
 const operationLogs = ref<ReturnType<typeof mapOperationLogs>>([])
 const logsLoading = ref(false)
@@ -410,11 +410,6 @@ const announcementForm = ref({
   targetBuildingsText: '',
   status: ANNOUNCEMENT_STATUS.PUBLISHED
 })
-
-const collectionRadius = 50
-const collectionCircumference = 2 * Math.PI * collectionRadius
-const collectionDashArray = `${collectionCircumference} ${collectionCircumference}`
-const collectionDashOffset = computed(() => collectionCircumference - (collectionRate.value / 100) * collectionCircumference)
 
 async function loadOperationLogs() {
   logsLoading.value = true
@@ -701,8 +696,7 @@ onMounted(async () => {
     const overview = await dashboardApi.overview()
     periodDesc.value = mapPeriodDescription(overview)
     stats.value = mapDashboardStats(overview)
-    collectionRate.value = mapCollectionRate(overview)
-    pendingAuditCount.value = mapPendingAuditCount(overview)
+    topMerchants.value = mapTopMerchants(overview)
     recentActivity.value = mapRecentActivity(overview)
   } catch (e) {
     console.error(e)
@@ -724,8 +718,15 @@ onMounted(async () => {
 .btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #ffffff; font-size: 14px; transition: background 0.2s; }
 .btnPrimary:hover { background: #52529a; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
-.charts { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+.panels { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; margin-bottom: 20px; }
+.topMerchantsPanel { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-height: 220px; }
+.topMerchantsPanel .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 16px; }
+.merchantTable { width: 100%; font-size: 14px; border-collapse: collapse; }
+.merchantTable thead th { text-align: left; padding: 10px 12px; color: #8c8c9a; font-weight: 500; background: #fafafc; border-bottom: 1px solid #f0f0f3; }
+.merchantTable tbody td { padding: 12px; color: #1f1f2e; border-bottom: 1px solid #f0f0f3; }
+.merchantTable tbody tr:last-child td { border-bottom: none; }
+.panelEmpty { font-size: 14px; color: #8c8c9a; padding: 24px 0; text-align: center; }
 .statCard { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-width: 0; }
 .statCard .top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
 .statCard .icon { width: 40px; height: 40px; border-radius: 10px; background: #f4f5f7; color: #5c5c66; display: flex; align-items: center; justify-content: center; }
@@ -742,23 +743,12 @@ onMounted(async () => {
 .statCard.green .icon { background: rgba(255,255,255,0.2); color: #ffffff; }
 .statCard.green .label { color: rgba(255,255,255,0.8); }
 .statCard.green .value { color: #ffffff; }
-.collectionRate { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; }
-.collectionRate .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 24px; align-self: flex-start; }
-.collectionRate .chart { position: relative; width: 160px; height: 160px; }
-.collectionRate .svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.collectionRate .track { fill: none; stroke: #f0f0f3; stroke-width: 10; stroke-linecap: round; }
-.collectionRate .progress { fill: none; stroke: #5c5c9e; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
-.collectionRate .text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.collectionRate .percent { font-size: 32px; font-weight: 700; color: #1f1f2e; }
-.collectionRate .hint { font-size: 13px; color: #8c8c9a; margin-top: 4px; }
-.pendingAudit { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; }
-.pendingAudit .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 24px; align-self: flex-start; }
-.pendingAudit .body { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
-.pendingAudit .count { font-size: 56px; font-weight: 700; color: #5c5c9e; line-height: 1; }
-.pendingAudit .hint { font-size: 13px; color: #8c8c9a; margin-top: 12px; }
-.recentActivity { background: #ffffff; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.recentActivity { background: #ffffff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.recentActivity.compact { margin-bottom: 0; min-height: 220px; }
 .recentActivity .header { margin-bottom: 12px; }
 .recentActivity .title { font-size: 15px; font-weight: 500; color: #1f1f2e; margin-bottom: 0; }
+.activityList { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.activityEmpty { font-size: 14px; color: #8c8c9a; padding: 24px 0; text-align: center; }
 .activityList { list-style: none; margin: 0; padding: 0; }
 .activityItem { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f0f0f3; font-size: 14px; }
 .activityItem:last-child { border-bottom: none; }
@@ -782,7 +772,7 @@ onMounted(async () => {
 .recentLog .emptyCell { text-align: center; padding: 24px; color: #8c8c9a; }
 @media (max-width: 1024px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
-  .charts { grid-template-columns: 1fr; }
+  .panels { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .header { flex-direction: column; gap: 16px; }

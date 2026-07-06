@@ -108,51 +108,90 @@ export function rateToFormPercent(rate?: number) {
 function resolveDashboardMetrics(overview: DashboardOverview) {
   const summary = overview.summary || {}
   return {
-    totalResidents: overview.totalResidents ?? summary.totalResidents,
-    monthlyConsumption: overview.monthlyConsumption ?? summary.totalRevenue,
-    totalMerchants: overview.totalMerchants ?? summary.totalMerchants,
-    coinTotalIssued: overview.coinTotalIssued ?? summary.totalCoinIssued,
-    propertyFeeCollectionRate: overview.propertyFeeCollectionRate ?? summary.propertyFeeCollectionRate
+    totalRevenue: summary.totalRevenue ?? overview.monthlyConsumption,
+    totalResidents: summary.totalResidents ?? overview.totalResidents,
+    totalFamilies: summary.totalFamilies ?? overview.totalFamilies,
+    totalOrders: summary.totalOrders,
+    totalMerchants: summary.totalMerchants ?? overview.totalMerchants,
+    coinInCirculation: summary.coinInCirculation,
+    coinConsumed: summary.coinConsumed,
+    totalCoinIssued: summary.totalCoinIssued ?? overview.coinTotalIssued
   }
+}
+
+function formatTrendBadge(rate?: number) {
+  if (rate === undefined || rate === null) return undefined
+  const prefix = rate >= 0 ? '↑' : '↓'
+  return `${prefix} ${formatPercent(Math.abs(rate))}%`
+}
+
+function formatActivityTime(time?: string) {
+  if (!time) return '-'
+  return time.replace('T', ' ').slice(0, 16)
 }
 
 export function mapDashboardStats(overview: DashboardOverview) {
   const metrics = resolveDashboardMetrics(overview)
   const trends = overview.trends || {}
+  const residentGrowth = trends.newResidentGrowthRate ?? trends.residentGrowthRate
 
   return [
     {
-      code: 'residents',
-      title: '总住户',
-      value: `${formatMoney(metrics.totalResidents)} 户`,
-      icon: 'resident',
-      badge: trends.residentGrowthRate !== undefined ? `↑ ${formatPercent(trends.residentGrowthRate)}%` : undefined,
+      code: 'revenue',
+      title: '总收入',
+      value: `¥${formatMoney(metrics.totalRevenue)}`,
+      icon: 'money',
+      badge: formatTrendBadge(trends.revenueGrowthRate),
       variant: 'default' as const
     },
     {
-      code: 'consumption',
-      title: '本月消费',
-      value: `¥${formatMoney(metrics.monthlyConsumption)}`,
-      icon: 'money',
-      badge: trends.revenueGrowthRate !== undefined ? `↑ ${formatPercent(trends.revenueGrowthRate)}%` : undefined,
+      code: 'residents',
+      title: '总居民',
+      value: `${metrics.totalResidents ?? 0} 人`,
+      icon: 'resident',
+      badge: formatTrendBadge(residentGrowth),
+      variant: 'default' as const
+    },
+    {
+      code: 'families',
+      title: '总家庭',
+      value: `${metrics.totalFamilies ?? 0} 户`,
+      icon: 'resident',
+      variant: 'purple' as const
+    },
+    {
+      code: 'coinCirculation',
+      title: '物业币流通中',
+      value: `¥${formatMoney(metrics.coinInCirculation)}`,
+      icon: 'coin',
+      variant: 'green' as const
+    },
+    {
+      code: 'orders',
+      title: '总订单',
+      value: `${metrics.totalOrders ?? 0} 单`,
+      icon: 'chart',
+      badge: formatTrendBadge(trends.orderGrowthRate),
       variant: 'default' as const
     },
     {
       code: 'merchants',
       title: '总商家',
-      value: `${formatMoney(metrics.totalMerchants)} 家`,
+      value: `${metrics.totalMerchants ?? 0} 家`,
       icon: 'merchant',
-      badge: trends.merchantGrowthRate !== undefined ? `↑ ${formatPercent(trends.merchantGrowthRate)}%` : undefined,
-      variant: 'purple' as const
-    },
-    {
-      code: 'coins',
-      title: '物业币发行',
-      value: `¥${formatMoney(metrics.coinTotalIssued)}`,
-      icon: 'coin',
-      variant: 'green' as const
+      badge: formatTrendBadge(trends.merchantGrowthRate),
+      variant: 'default' as const
     }
   ]
+}
+
+export function mapTopMerchants(overview: DashboardOverview) {
+  return (overview.topMerchants || []).map((item, index) => ({
+    id: item.id || item.merchantId || `merchant-${index}`,
+    name: item.name || item.merchantName || '—',
+    orderCount: item.orderCount ?? 0,
+    revenue: `¥${formatMoney(item.revenue)}`
+  }))
 }
 
 export function mapPeriodDescription(overview: DashboardOverview) {
@@ -165,10 +204,10 @@ export function mapPeriodDescription(overview: DashboardOverview) {
 
 export function mapRecentActivity(overview: DashboardOverview) {
   return (overview.recentActivity || []).map((item, index) => ({
-    id: `${item.type || 'activity'}-${item.timestamp || index}`,
+    id: `${item.type || 'activity'}-${item.time || item.timestamp || index}`,
     type: item.type || '-',
     description: item.description || '-',
-    timestamp: item.timestamp || '-'
+    timestamp: formatActivityTime(item.time || item.timestamp)
   }))
 }
 
@@ -181,7 +220,7 @@ export function mapConsumptionData(overview: DashboardOverview) {
   if (!list.length) return [{ name: '暂无', value: 0 }]
   const max = Math.max(...list.map(item => item.revenue || item.orderCount || 0), 1)
   return list.slice(0, 5).map(item => ({
-    name: item.merchantName || '商家',
+    name: item.name || item.merchantName || '商家',
     value: Math.round(((item.revenue || item.orderCount || 0) / max) * 100)
   }))
 }
@@ -461,8 +500,8 @@ export function mapPermissionLogs(list: Array<{ createdAt?: string; operatorName
 }
 
 export function mapCollectionRate(overview: DashboardOverview) {
-  const metrics = resolveDashboardMetrics(overview)
-  return formatPercent(metrics.propertyFeeCollectionRate)
+  const summary = overview.summary || {}
+  return formatPercent(overview.propertyFeeCollectionRate ?? summary.propertyFeeCollectionRate)
 }
 
 export function mapReportsToDashboardOverview(reports: ReportsOverview, period: string): DashboardOverview {
