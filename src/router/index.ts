@@ -21,6 +21,14 @@ import CourierAvailable from '../views/courier/CourierAvailable.vue'
 import CourierTasks from '../views/courier/CourierTasks.vue'
 import CoordinatorStats from '../views/coordinator/CoordinatorStats.vue'
 import CoordinatorRecords from '../views/coordinator/CoordinatorRecords.vue'
+import CoordinatorOverview from '../views/coordinator/CoordinatorOverview.vue'
+import CoordinatorMerchants from '../views/coordinator/CoordinatorMerchants.vue'
+import CoordinatorRanking from '../views/coordinator/CoordinatorRanking.vue'
+import CoordinatorAnnouncements from '../views/coordinator/CoordinatorAnnouncements.vue'
+import CoordinatorActivityGroups from '../views/coordinator/CoordinatorActivityGroups.vue'
+import CoordinatorServices from '../views/coordinator/CoordinatorServices.vue'
+import CoordinatorOffers from '../views/coordinator/CoordinatorOffers.vue'
+import CoordinatorSectorLeaders from '../views/coordinator/CoordinatorSectorLeaders.vue'
 import SectorLeaderOverview from '../views/sector-leader/SectorLeaderOverview.vue'
 import SectorLeaderMerchants from '../views/sector-leader/SectorLeaderMerchants.vue'
 import SectorLeaderRanking from '../views/sector-leader/SectorLeaderRanking.vue'
@@ -130,6 +138,54 @@ const routes = [
         name: 'courier-tasks',
         component: CourierTasks,
         meta: { title: '我的任务', roles: [USER_ROLE.COURIER] }
+      },
+      {
+        path: 'coordinator/overview',
+        name: 'coordinator-overview',
+        component: CoordinatorOverview,
+        meta: { title: '工作台', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/merchants',
+        name: 'coordinator-merchants',
+        component: CoordinatorMerchants,
+        meta: { title: '商家管理', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/ranking',
+        name: 'coordinator-ranking',
+        component: CoordinatorRanking,
+        meta: { title: '商家排名', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/announcements',
+        name: 'coordinator-announcements',
+        component: CoordinatorAnnouncements,
+        meta: { title: '统筹公告', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/activity-groups',
+        name: 'coordinator-activity-groups',
+        component: CoordinatorActivityGroups,
+        meta: { title: '活动组', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/services',
+        name: 'coordinator-services',
+        component: CoordinatorServices,
+        meta: { title: '服务管理', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/offers',
+        name: 'coordinator-offers',
+        component: CoordinatorOffers,
+        meta: { title: '特惠推送', roles: [USER_ROLE.COORDINATOR] }
+      },
+      {
+        path: 'coordinator/sector-leaders',
+        name: 'coordinator-sector-leaders',
+        component: CoordinatorSectorLeaders,
+        meta: { title: '板块管理', roles: [USER_ROLE.COORDINATOR] }
       },
       {
         path: 'coordinator/stats',

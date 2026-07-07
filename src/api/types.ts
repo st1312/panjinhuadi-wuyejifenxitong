@@ -915,6 +915,79 @@ export interface SectorLeaderDetail {
   updatedAt?: string
 }
 
+export interface SectorLeaderCreatePayload {
+  residentId: string
+  coordinatorId: string
+  sector: string
+  description?: string
+}
+
+export interface SectorLeaderUpdatePayload {
+  coordinatorId?: string
+  sector?: string
+  description?: string
+  status?: string
+}
+
+export interface CoordinatorDetail {
+  id: string
+  residentId?: string
+  residentName?: string
+  residentPhone?: string
+  propertyCompanyId?: string
+  propertyCompanyName?: string
+  description?: string
+  sectorCount?: number
+  individualLeaderCount?: number
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ActivityGroupItem {
+  id: string
+  name: string
+  description?: string
+  coverUrl?: string
+  leaderId?: string
+  leaderName?: string
+  communityId?: string
+  communityName?: string
+  memberCount?: number
+  subscriberCount?: number
+  monthlyFee?: number
+  yearlyFee?: number
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ActivityGroupCreatePayload {
+  name: string
+  description?: string
+  coverUrl?: string
+  monthlyFee?: number
+  yearlyFee?: number
+}
+
+export interface ActivityGroupUpdatePayload {
+  name?: string
+  description?: string
+  coverUrl?: string
+  monthlyFee?: number
+  yearlyFee?: number
+}
+
+export interface ActivityGroupMemberItem {
+  id: string
+  name?: string
+  avatarUrl?: string
+  relation?: string
+  isLeader?: boolean
+  joinedAt?: string
+  status?: string
+}
+
 export interface SpecialOfferItem {
   id: string
   title: string

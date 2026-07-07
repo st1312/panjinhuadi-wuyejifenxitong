@@ -54,7 +54,7 @@ export function configureRequest(options: {
 function withCompanyQuery(path: string) {
   const qIndex = path.indexOf('?')
   const pathname = qIndex >= 0 ? path.slice(0, qIndex) : path
-  if (pathname.includes('/profit-space') || pathname === '/merchants/my' || pathname === '/sector-leaders/my') {
+  if (pathname.includes('/profit-space') || pathname === '/merchants/my' || pathname === '/sector-leaders/my' || pathname === '/coordinators/my') {
     return path
   }
 

@@ -38,7 +38,7 @@ export function getRoleHomeRoute(role?: string | null): string {
     case USER_ROLE.COURIER:
       return 'courier-available'
     case USER_ROLE.COORDINATOR:
-      return 'coordinator-stats'
+      return 'coordinator-overview'
     case USER_ROLE.SECTOR_LEADER:
       return 'sector-leader-overview'
     case USER_ROLE.INDIVIDUAL_LEADER:

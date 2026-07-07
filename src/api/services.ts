@@ -64,6 +64,13 @@ import type {
   ProductItem,
   ProductUpdatePayload,
   SectorLeaderDetail,
+  SectorLeaderCreatePayload,
+  SectorLeaderUpdatePayload,
+  CoordinatorDetail,
+  ActivityGroupItem,
+  ActivityGroupCreatePayload,
+  ActivityGroupUpdatePayload,
+  ActivityGroupMemberItem,
   SpecialOfferCreatePayload,
   SpecialOfferItem,
   SpecialOfferUpdatePayload,
@@ -727,6 +734,78 @@ export const serviceApi = {
 export const sectorLeaderPortalApi = {
   my() {
     return request<SectorLeaderDetail>('/sector-leaders/my')
+  }
+}
+
+export const coordinatorPortalApi = {
+  my() {
+    return request<CoordinatorDetail>('/coordinators/my')
+  },
+
+  sectorLeaders(params: {
+    page?: number
+    pageSize?: number
+    keyword?: string
+    status?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<SectorLeaderDetail>>(`/admin/sector-leaders${buildQuery(params)}`)
+  },
+
+  createSectorLeader(payload: SectorLeaderCreatePayload) {
+    return request<SectorLeaderDetail>('/admin/sector-leaders', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateSectorLeader(id: string, payload: SectorLeaderUpdatePayload) {
+    return request<SectorLeaderDetail>(`/admin/sector-leaders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  removeSectorLeader(id: string) {
+    return request<{ id: string; status?: string }>(`/admin/sector-leaders/${id}`, {
+      method: 'DELETE'
+    })
+  }
+}
+
+export const activityGroupApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    communityId?: string
+    mine?: boolean
+    sort?: string
+  } = {}) {
+    return request<PageResult<ActivityGroupItem>>(`/activity-groups${buildQuery(params)}`)
+  },
+
+  get(id: string) {
+    return request<ActivityGroupItem>(`/activity-groups/${id}`)
+  },
+
+  members(id: string) {
+    return request<{ list: ActivityGroupMemberItem[]; total?: number }>(
+      `/activity-groups/${id}/members`
+    )
+  },
+
+  create(payload: ActivityGroupCreatePayload) {
+    return request<ActivityGroupItem>('/activity-groups', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  update(id: string, payload: ActivityGroupUpdatePayload) {
+    return request<ActivityGroupItem>(`/activity-groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
   }
 }
 

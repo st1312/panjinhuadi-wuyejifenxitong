@@ -29,8 +29,16 @@ export const courierMenus: Menu[] = [
 ]
 
 export const coordinatorMenus: Menu[] = [
-  { name: '分成统计', icon: 'chart', route: 'coordinator-stats' },
-  { name: '分成明细', icon: 'money', route: 'coordinator-records' }
+  { name: '工作台', icon: 'dashboard', route: 'coordinator-overview' },
+  { name: '商家管理', icon: 'merchant', route: 'coordinator-merchants' },
+  { name: '商家排名', icon: 'chart', route: 'coordinator-ranking' },
+  { name: '统筹公告', icon: 'notice', route: 'coordinator-announcements' },
+  { name: '活动组', icon: 'people', route: 'coordinator-activity-groups' },
+  { name: '服务管理', icon: 'home', route: 'coordinator-services' },
+  { name: '特惠推送', icon: 'retail', route: 'coordinator-offers' },
+  { name: '板块管理', icon: 'permission', route: 'coordinator-sector-leaders' },
+  { name: '分成统计', icon: 'money', route: 'coordinator-stats' },
+  { name: '分成明细', icon: 'history', route: 'coordinator-records' }
 ]
 
 export const sectorLeaderMenus: Menu[] = [
