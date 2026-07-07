@@ -12,9 +12,21 @@
         <option value="">全部状态</option>
         <option v-for="opt in ORDER_STATUS_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
-      <input v-model="filters.startDate" type="date" class="input" @change="reload" />
+      <input
+        v-model="filters.startDate"
+        type="date"
+        class="input dateInput"
+        :class="{ empty: !filters.startDate }"
+        @change="reload"
+      />
       <span class="sep">至</span>
-      <input v-model="filters.endDate" type="date" class="input" @change="reload" />
+      <input
+        v-model="filters.endDate"
+        type="date"
+        class="input dateInput"
+        :class="{ empty: !filters.endDate }"
+        @change="reload"
+      />
     </div>
 
     <div class="panel">
@@ -149,9 +161,13 @@ onMounted(() => load(1))
 .desc { font-size: 14px; color: #8c8c9a; }
 .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .select, .input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; font-size: 14px; }
+.dateInput.empty { color: transparent; }
+.dateInput.empty::-webkit-datetime-edit { opacity: 0; }
+.dateInput.empty::-webkit-calendar-picker-indicator { opacity: 1; }
+.dateInput:not(.empty) { color: #1f1f2e; }
 .sep { color: #8c8c9a; font-size: 13px; }
 .panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.loading, .empty, .error { text-align: center; padding: 32px 0; color: #8c8c9a; font-size: 14px; }
+.loading, .empty, .error { text-align: center; color: #8c8c9a; font-size: 14px; }
 .error { color: #e05c5c; }
 .table th, .table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #f0f0f3; font-size: 13px; }
 .table th { color: #8c8c9a; font-weight: 500; }
