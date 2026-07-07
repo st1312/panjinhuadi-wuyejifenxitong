@@ -48,6 +48,25 @@ import type {
   CoinUnfreezePayload,
   CoinUnfreezeResult,
   CoinFreezeRecordItem,
+  CommunityServiceCreatePayload,
+  CommunityServiceItem,
+  CourierDeliveryItem,
+  DeliveryCompletePayload,
+  DistributionRecordItem,
+  DistributionStats,
+  MerchantPointGrantPayload,
+  MerchantPointPurchaseItem,
+  MerchantPointPurchasePayload,
+  MerchantWithdrawalItem,
+  MerchantWithdrawalPayload,
+  MyMerchantDetail,
+  ProductCreatePayload,
+  ProductItem,
+  ProductUpdatePayload,
+  SectorLeaderDetail,
+  SpecialOfferCreatePayload,
+  SpecialOfferItem,
+  SpecialOfferUpdatePayload,
   UserProfile
 } from './types'
 
@@ -523,4 +542,226 @@ export const permissionApi = {
 
 export type { DeliveryOrderItem }
 
+
+export const merchantPortalApi = {
+  my() {
+    return request<MyMerchantDetail>('/merchants/my')
+  },
+
+  update(id: string, payload: MerchantUpdatePayload) {
+    return request<MyMerchantDetail>(`/merchants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  orders(params: {
+    page?: number
+    pageSize?: number
+    orderStatus?: string
+    startDate?: string
+    endDate?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<OrderItem>>(`/orders${buildQuery(params)}`)
+  },
+
+  updateOrderStatus(id: string, orderStatus: string) {
+    return request<OrderItem>(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ orderStatus })
+    })
+  },
+
+  products(params: {
+    page?: number
+    pageSize?: number
+    merchantId?: string
+    keyword?: string
+    status?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<ProductItem>>(`/products${buildQuery(params)}`)
+  },
+
+  createProduct(payload: ProductCreatePayload) {
+    return request<ProductItem>('/products', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateProduct(id: string, payload: ProductUpdatePayload) {
+    return request<ProductItem>(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  purchasePoints(payload: MerchantPointPurchasePayload) {
+    return request<MerchantPointPurchaseItem>('/merchant/points/purchase', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  pointPurchases(params: {
+    page?: number
+    pageSize?: number
+    auditStatus?: string
+    startDate?: string
+    endDate?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<MerchantPointPurchaseItem>>(
+      `/merchant/points/purchases${buildQuery(params)}`
+    )
+  },
+
+  grantPoints(payload: MerchantPointGrantPayload) {
+    return request<unknown>('/merchant/points/grant', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  createWithdrawal(payload: MerchantWithdrawalPayload) {
+    return request<MerchantWithdrawalItem>('/merchant/withdrawals', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  withdrawals(params: {
+    page?: number
+    pageSize?: number
+    auditStatus?: string
+    startDate?: string
+    endDate?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<MerchantWithdrawalItem>>(
+      `/merchant/withdrawals${buildQuery(params)}`
+    )
+  }
+}
+
+export const courierPortalApi = {
+  pending(params: { page?: number; pageSize?: number; sort?: string } = {}) {
+    return request<PageResult<CourierDeliveryItem>>(`/deliveries/pending${buildQuery(params)}`)
+  },
+
+  my(params: {
+    page?: number
+    pageSize?: number
+    status?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<CourierDeliveryItem>>(`/deliveries/my${buildQuery(params)}`)
+  },
+
+  grab(id: string) {
+    return request<CourierDeliveryItem>(`/deliveries/${id}/grab`, { method: 'POST' })
+  },
+
+  complete(id: string, payload: DeliveryCompletePayload = {}) {
+    return request<CourierDeliveryItem>(`/deliveries/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateStatus(id: string, status: string) {
+    return request<CourierDeliveryItem>(`/deliveries/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    })
+  }
+}
+
+export const distributionApi = {
+  records(params: {
+    page?: number
+    pageSize?: number
+    orderId?: string
+    merchantId?: string
+    coordinatorId?: string
+    sectorLeaderId?: string
+    individualLeaderId?: string
+    startDate?: string
+    endDate?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<DistributionRecordItem>>(`/distribution/records${buildQuery(params)}`)
+  },
+
+  stats(params: {
+    startDate?: string
+    endDate?: string
+    dimension?: string
+    propertyCompanyId?: string
+  } = {}) {
+    return request<DistributionStats>(`/distribution/stats${buildQuery(params)}`)
+  }
+}
+
+export const serviceApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    category?: string
+    mine?: boolean
+    sort?: string
+  } = {}) {
+    return request<PageResult<CommunityServiceItem>>(`/services${buildQuery(params)}`)
+  },
+
+  create(payload: CommunityServiceCreatePayload) {
+    return request<CommunityServiceItem>('/services', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+}
+
+export const sectorLeaderPortalApi = {
+  my() {
+    return request<SectorLeaderDetail>('/sector-leaders/my')
+  }
+}
+
+export const specialOfferApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    merchantId?: string
+    status?: string
+    keyword?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<SpecialOfferItem>>(`/special-offers${buildQuery(params)}`)
+  },
+
+  get(id: string) {
+    return request<SpecialOfferItem>(`/special-offers/${id}`)
+  },
+
+  create(payload: SpecialOfferCreatePayload) {
+    return request<SpecialOfferItem>('/special-offers', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  update(id: string, payload: SpecialOfferUpdatePayload) {
+    return request<SpecialOfferItem>(`/special-offers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  remove(id: string) {
+    return request<{ id: string }>(`/special-offers/${id}`, { method: 'DELETE' })
+  }
+}
 

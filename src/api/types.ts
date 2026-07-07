@@ -35,9 +35,16 @@ export interface UserProfile {
   role: string
   propertyCompanyId?: string
   propertyName?: string
+  communityId?: string
+  communityName?: string
+  coordinatorId?: string
+  sectorLeaderId?: string
+  individualLeaderId?: string
   status?: string
   wechatBound?: boolean
   newUser?: boolean
+  pointBalance?: number
+  coinBalance?: number
 }
 
 export interface ResidentItem {
@@ -679,11 +686,279 @@ export interface DeliveryTaskItem {
 
 export interface OrderItem {
   id: string
+  orderNo?: string
   createdAt?: string
+  residentId?: string
   residentName?: string
+  merchantId?: string
+  merchantName?: string
   room?: string
   productSummary?: string
+  items?: Array<{
+    productId?: string
+    productName?: string
+    quantity?: number
+    price?: number
+    subtotal?: number
+  }>
   totalAmount?: number
   deliveryFee?: number
+  paymentMethod?: string
+  pointUsed?: number
+  coinUsed?: number
+  cashAmount?: number
+  deliveryAddress?: string
+  orderStatus?: string
+  status?: string
+}
+
+export interface MyMerchantDetail {
+  id: string
+  platformMerchantId?: string
+  name: string
+  description?: string
+  coverUrls?: string[]
+  videoUrl?: string | null
+  merchantLevel?: string
+  category?: string
+  businessHours?: string
+  contactPhone?: string
+  address?: string
+  deliveryFee?: number
+  freeDeliveryThreshold?: number
+  auditStatus?: string
+  status?: string
+  totalOrders?: number
+  totalRevenue?: number
+  products?: ProductItem[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ProductItem {
+  id: string
+  merchantId?: string
+  merchantName?: string
+  name: string
+  description?: string
+  coverUrl?: string
+  price?: number
+  memberPrice?: number
+  pointPrice?: number
+  stock?: number
+  category?: string
+  status?: string
+  salesCount?: number
+  createdAt?: string
+}
+
+export interface ProductCreatePayload {
+  name: string
+  description?: string
+  coverUrl?: string
+  price: number
+  memberPrice?: number
+  pointPrice?: number
+  stock?: number
+  category?: string
+  status?: string
+}
+
+export interface ProductUpdatePayload {
+  name?: string
+  description?: string
+  coverUrl?: string
+  price?: number
+  memberPrice?: number
+  pointPrice?: number
+  stock?: number
+  category?: string
+  status?: string
+}
+
+export interface MerchantPointPurchaseItem {
+  id: string
+  merchantId?: string
+  merchantName?: string
+  pointAmount?: number
+  payAmount?: number
+  status?: string
+  auditRemark?: string
+  createdAt?: string
+  auditedAt?: string
+}
+
+export interface MerchantPointPurchasePayload {
+  pointAmount: number
+  payAmount: number
+}
+
+export interface MerchantPointGrantPayload {
+  purchaseId: string
+  residentId: string
+  pointAmount: number
+  description?: string
+}
+
+export interface MerchantWithdrawalItem {
+  id: string
+  merchantId?: string
+  merchantName?: string
+  amount?: number
+  feeRate?: number
+  feeAmount?: number
+  actualAmount?: number
+  status?: string
+  createdAt?: string
+  completedAt?: string
+}
+
+export interface MerchantWithdrawalPayload {
+  amount: number
+}
+
+export interface CourierDeliveryItem {
+  id: string
+  orderId?: string
+  orderNo?: string
+  merchantId?: string
+  merchantName?: string
+  merchantAddress?: string
+  pickupAddress?: string
+  deliveryAddress?: string
+  contactPhone?: string
+  fee?: number
+  courierEarning?: number
+  status?: string
+  timeoutMinutes?: number
+  acceptedAt?: string
+  timeoutAt?: string
+  createdAt?: string
+}
+
+export interface DeliveryCompletePayload {
+  proofImageUrls?: string[]
+  remark?: string
+}
+
+export interface DistributionRecordItem {
+  id: string
+  orderId?: string
+  orderNo?: string
+  merchantId?: string
+  merchantName?: string
+  totalAmount?: number
+  distributableAmount?: number
+  propertyAmount?: number
+  coordinatorAmount?: number
+  sectorLeaderAmount?: number
+  individualLeaderAmount?: number
+  status?: string
+  createdAt?: string
+}
+
+export interface DistributionStats {
+  summary?: {
+    totalDistributableAmount?: number
+    propertyAmount?: number
+    coordinatorAmount?: number
+    sectorLeaderAmount?: number
+    individualLeaderAmount?: number
+  }
+  byProperty?: Array<{ propertyCompanyId?: string; propertyName?: string; amount?: number }>
+  byCoordinator?: Array<{ coordinatorId?: string; name?: string; amount?: number }>
+  bySector?: Array<{ sector?: string; sectorName?: string; amount?: number }>
+}
+
+export interface CommunityServiceItem {
+  id: string
+  name: string
+  description?: string
+  coverUrl?: string
+  category?: string
+  categoryName?: string
+  price?: number
+  memberPrice?: number
+  priceUnit?: string
+  isSubscription?: boolean
+  status?: string
+  createdAt?: string
+}
+
+export interface CommunityServiceCreatePayload {
+  name: string
+  category: string
+  description?: string
+  coverUrls?: string[]
+  price?: number
+  memberPrice?: number
+  priceUnit?: string
+  isSubscription?: boolean
+}
+
+export interface SectorLeaderDetail {
+  id: string
+  residentId?: string
+  residentName?: string
+  residentPhone?: string
+  coordinatorId?: string
+  coordinatorName?: string
+  sector?: string
+  sectorName?: string
+  propertyCompanyId?: string
+  propertyCompanyName?: string
+  description?: string
+  individualLeaderCount?: number
+  merchantCount?: number
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface SpecialOfferItem {
+  id: string
+  title: string
+  description?: string
+  merchantId?: string
+  merchantName?: string
+  coverUrl?: string
+  discountType?: string
+  discountValue?: number
+  minConsumption?: number
+  startTime?: string
+  endTime?: string
+  totalQuota?: number
+  remainingQuota?: number
+  perUserQuota?: number
+  targetBuildings?: string[]
+  status?: string
+  createdAt?: string
+}
+
+export interface SpecialOfferCreatePayload {
+  title: string
+  description?: string
+  merchantId?: string
+  coverUrl?: string
+  discountType: string
+  discountValue: number
+  minConsumption?: number
+  startTime: string
+  endTime: string
+  totalQuota?: number
+  perUserQuota?: number
+  targetBuildings?: string[]
+  propertyCompanyId?: string
+}
+
+export interface SpecialOfferUpdatePayload {
+  title?: string
+  description?: string
+  discountValue?: number
+  minConsumption?: number
+  startTime?: string
+  endTime?: string
+  totalQuota?: number
+  perUserQuota?: number
   status?: string
 }

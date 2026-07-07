@@ -1,0 +1,166 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1 class="title">提现管理</h1>
+        <p class="desc">申请提现并查看处理进度</p>
+      </div>
+      <button class="btnPrimary" @click="openModal">申请提现</button>
+    </div>
+
+    <div class="toolbar">
+      <select v-model="auditFilter" class="select" @change="load(1)">
+        <option value="">全部状态</option>
+        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+
+    <div class="panel">
+      <div v-if="loading" class="loading">加载中...</div>
+      <p v-else-if="error" class="error">{{ error }}</p>
+      <table v-else-if="records.length" class="table">
+        <thead>
+          <tr>
+            <th>申请时间</th>
+            <th>提现金额</th>
+            <th>手续费</th>
+            <th>实际到账</th>
+            <th>状态</th>
+            <th>完成时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in records" :key="item.id">
+            <td>{{ item.createdAt || '—' }}</td>
+            <td>¥{{ formatMoney(item.amount) }}</td>
+            <td>¥{{ formatMoney(item.feeAmount) }}</td>
+            <td>¥{{ formatMoney(item.actualAmount) }}</td>
+            <td>{{ getEnumLabel(WITHDRAWAL_AUDIT_STATUS_LABEL, item.status) }}</td>
+            <td>{{ item.completedAt || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="empty">暂无提现记录</p>
+    </div>
+
+    <Teleport to="body">
+      <div v-if="modalOpen" class="modalOverlay" @click.self="closeModal">
+        <div class="modal">
+          <div class="modalHeader">
+            <h3 class="modalTitle">申请提现</h3>
+            <button class="modalClose" @click="closeModal">&times;</button>
+          </div>
+          <div class="modalBody">
+            <p v-if="formError" class="error">{{ formError }}</p>
+            <div class="field">
+              <label class="label">提现金额（元）</label>
+              <input v-model.number="amount" type="number" min="0.01" step="0.01" class="input" />
+            </div>
+          </div>
+          <div class="modalFooter">
+            <button class="btnSecondary" @click="closeModal">取消</button>
+            <button class="btnPrimary" :disabled="submitting" @click="submit">
+              {{ submitting ? '提交中...' : '确认申请' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { merchantPortalApi } from '../../api/services'
+import type { MerchantWithdrawalItem } from '../../api/types'
+import { ApiError } from '../../api/request'
+import { getEnumLabel, WITHDRAWAL_AUDIT_STATUS_LABEL } from '../../constants/enums'
+
+const statusOptions = Object.entries(WITHDRAWAL_AUDIT_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+
+const records = ref<MerchantWithdrawalItem[]>([])
+const loading = ref(false)
+const error = ref('')
+const auditFilter = ref('')
+const modalOpen = ref(false)
+const amount = ref(500)
+const submitting = ref(false)
+const formError = ref('')
+
+function formatMoney(value?: number) {
+  if (value === undefined || value === null) return '0.00'
+  return Number(value).toFixed(2)
+}
+
+async function load(page = 1) {
+  loading.value = true
+  error.value = ''
+  try {
+    const res = await merchantPortalApi.withdrawals({
+      page,
+      pageSize: 20,
+      auditStatus: auditFilter.value || undefined,
+      sort: '-createdAt'
+    })
+    records.value = res.list || []
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '提现记录加载失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+function openModal() {
+  formError.value = ''
+  modalOpen.value = true
+}
+
+function closeModal() {
+  modalOpen.value = false
+}
+
+async function submit() {
+  if (!amount.value || amount.value <= 0) {
+    formError.value = '请输入有效提现金额'
+    return
+  }
+  submitting.value = true
+  formError.value = ''
+  try {
+    await merchantPortalApi.createWithdrawal({ amount: amount.value })
+    closeModal()
+    await load(1)
+  } catch (e) {
+    formError.value = e instanceof ApiError ? e.message : '申请失败'
+  } finally {
+    submitting.value = false
+  }
+}
+
+onMounted(() => load(1))
+</script>
+
+<style scoped>
+.page { max-width: 1200px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+.title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
+.desc { font-size: 14px; color: #8c8c9a; }
+.btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
+.toolbar { margin-bottom: 16px; }
+.select { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; }
+.panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.loading, .empty, .error { text-align: center; padding: 32px 0; color: #8c8c9a; font-size: 14px; }
+.error { color: #e05c5c; }
+.table th, .table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #f0f0f3; font-size: 13px; }
+.modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { width: 420px; max-width: calc(100vw - 32px); background: #fff; border-radius: 12px; }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f0f0f3; }
+.modalTitle { font-size: 16px; font-weight: 600; }
+.modalClose { font-size: 24px; color: #8c8c9a; cursor: pointer; }
+.modalBody { padding: 24px; }
+.modalFooter { display: flex; justify-content: flex-end; gap: 12px; padding: 0 24px 24px; }
+.field { margin-bottom: 16px; }
+.label { display: block; font-size: 13px; color: #5c5c66; margin-bottom: 8px; }
+.input { width: 100%; padding: 10px 12px; border: 1px solid #e8e8ec; border-radius: 8px; box-sizing: border-box; }
+</style>

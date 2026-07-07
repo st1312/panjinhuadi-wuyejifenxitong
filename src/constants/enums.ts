@@ -110,6 +110,9 @@ export const USER_ROLE = {
   PLATFORM_ADMIN: 'platform_admin',
   MERCHANT: 'merchant',
   COURIER: 'courier',
+  COORDINATOR: 'coordinator',
+  SECTOR_LEADER: 'sector_leader',
+  INDIVIDUAL_LEADER: 'individual_leader',
   ACTIVITY_LEADER: 'activity_leader',
   TECHNICIAN: 'technician'
 } as const
@@ -188,13 +191,93 @@ export const ROLE_LABEL: Record<string, string> = {
   [USER_ROLE.RESIDENT]: '住户',
   [USER_ROLE.MERCHANT]: '商家',
   [USER_ROLE.COURIER]: '快递员',
+  [USER_ROLE.COORDINATOR]: '统筹负责人',
+  [USER_ROLE.SECTOR_LEADER]: '板块负责人',
+  [USER_ROLE.INDIVIDUAL_LEADER]: '个体负责人',
   [USER_ROLE.ACTIVITY_LEADER]: '活动组组长',
   [USER_ROLE.TECHNICIAN]: '技工',
-  coordinator: '统筹',
-  sector_leader: '板块负责人',
-  individual_leader: '个体负责人',
   community_manager: '社区管理员',
   property_employee: '物业员工'
+}
+
+export const SERVICE_CATEGORY = {
+  CLEANING_REPAIR: 'cleaning_repair',
+  CANTEEN: 'canteen',
+  TUTORING: 'tutoring',
+  ELDERLY_CARE: 'elderly_care',
+  MEDICAL: 'medical',
+  PET_MEDICAL: 'pet_medical',
+  LIFE_SERVICE: 'life_service',
+  DATING: 'dating'
+} as const
+
+export const SERVICE_CATEGORY_LABEL: Record<string, string> = {
+  cleaning_repair: '清洁维修',
+  canteen: '食堂',
+  tutoring: '托管辅导',
+  elderly_care: '养老',
+  medical: '医疗',
+  pet_medical: '宠物医疗',
+  life_service: '生活服务',
+  dating: '婚恋'
+}
+
+export const SERVICE_CATEGORY_OPTIONS = Object.entries(SERVICE_CATEGORY_LABEL).map(([value, label]) => ({
+  value,
+  label
+}))
+
+/** 板块类型（GET/POST /admin/sector-leaders） */
+export const SECTOR_TYPE = {
+  CLEANING: 'cleaning',
+  REPAIR: 'repair',
+  SECURITY: 'security',
+  GREENING: 'greening',
+  OTHER: 'other'
+} as const
+
+export const SECTOR_TYPE_LABEL: Record<string, string> = {
+  cleaning: '保洁',
+  repair: '维修',
+  security: '安保',
+  greening: '绿化',
+  other: '其他'
+}
+
+export const SPECIAL_OFFER_DISCOUNT_TYPE = {
+  FIXED: 'fixed',
+  PERCENT: 'percent'
+} as const
+
+export const SPECIAL_OFFER_DISCOUNT_TYPE_LABEL: Record<string, string> = {
+  fixed: '固定金额',
+  percent: '百分比'
+}
+
+export const SPECIAL_OFFER_STATUS = {
+  ACTIVE: 'active',
+  ENDED: 'ended',
+  ARCHIVED: 'archived'
+} as const
+
+export const SPECIAL_OFFER_STATUS_LABEL: Record<string, string> = {
+  active: '进行中',
+  ended: '已结束',
+  archived: '已归档'
+}
+
+export const WITHDRAWAL_AUDIT_STATUS = {
+  PENDING: 'pending_audit',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  COMPLETED: 'completed'
+} as const
+
+export const WITHDRAWAL_AUDIT_STATUS_LABEL: Record<string, string> = {
+  pending_audit: '待审核',
+  approved: '已通过',
+  rejected: '已拒绝',
+  completed: '已完成'
 }
 
 export const RESIDENT_STATUS_OPTIONS = [

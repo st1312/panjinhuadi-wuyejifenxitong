@@ -42,9 +42,9 @@
 
         <div class="header">
 
-          <h2 class="title">登录管理后台</h2>
+          <h2 class="title">登录系统</h2>
 
-          <p class="desc">请输入物业公司 ID 和微信登录 Code 继续</p>
+          <p class="desc">请输入手机号和密码继续</p>
 
         </div>
 
@@ -152,13 +152,11 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import IconSvg from '../components/IconSvg.vue'
 import { useAuthStore } from '../stores/auth'
+import { getRoleHomeRoute } from '../constants/roles'
 import { ApiError } from '../api/request'
 import ccbBg from '../assets/images/ccb.jpg'
 
-
-
 const router = useRouter()
-
 const auth = useAuthStore()
 
 
@@ -206,8 +204,7 @@ async function handleSubmit() {
   try {
 
     await auth.login(form.phone, form.password, form.remember)
-
-    router.replace('/')
+    router.replace({ name: getRoleHomeRoute(auth.profile?.role) })
 
   } catch (e) {
 

@@ -7,7 +7,7 @@
     </div>
 
     <div class="appHeaderRight">
-      <div v-if="companies.length" class="companySelectWrap">
+      <div v-if="companies.length && isAdminRole(auth.profile?.role)" class="companySelectWrap">
         <select
           v-model="selectedCompanyId"
           class="companySelect"
@@ -20,6 +20,8 @@
         </select>
       </div>
       
+      <div class="appHeaderSeparator" />
+      <span v-if="roleLabel" class="appHeaderRole">{{ roleLabel }}</span>
       <div class="appHeaderSeparator" />
       <button class="appHeaderLogout" @click="handleLogout">
         <span>退出</span>
@@ -38,13 +40,15 @@ import { useRoute, useRouter } from 'vue-router'
 import IconSvg from './IconSvg.vue'
 import { propertyCompanyApi } from '../api/services'
 import type { PropertyCompanyItem } from '../api/types'
-import { ENTITY_STATUS, USER_ROLE } from '../constants/enums'
+import { ENTITY_STATUS, getEnumLabel, ROLE_LABEL, USER_ROLE } from '../constants/enums'
+import { isAdminRole } from '../constants/roles'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const pageTitle = computed(() => (route.meta.title as string) || '')
+const roleLabel = computed(() => getEnumLabel(ROLE_LABEL, auth.profile?.role, ''))
 
 const companies = ref<PropertyCompanyItem[]>([])
 const canSwitchCompany = computed(() => auth.profile?.role === USER_ROLE.PLATFORM_ADMIN)
@@ -55,6 +59,7 @@ const selectedCompanyId = computed({
 })
 
 async function loadCompanies() {
+  if (!isAdminRole(auth.profile?.role)) return
   try {
     const res = await propertyCompanyApi.list(
       { page: 1, pageSize: 100, status: ENTITY_STATUS.ACTIVE, sort: '-createdAt' },
@@ -112,6 +117,11 @@ onMounted(loadCompanies)
 
 .appHeaderCurrent {
   color: #5c5c9a;
+}
+
+.appHeaderRole {
+  font-size: 13px;
+  color: #8c8c9a;
 }
 
 .appHeaderRight {

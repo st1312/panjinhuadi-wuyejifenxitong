@@ -9,7 +9,7 @@
       </div>
       <div class="appSidebarTitle">
         <div class="appSidebarBrand">万达物业</div>
-        <div class="appSidebarSub">管理后台</div>
+        <div class="appSidebarSub">{{ portalSubtitle }}</div>
       </div>
     </div>
     <nav class="appSidebarNav">
@@ -31,11 +31,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { menus } from '../constants/menus'
+import { getMenusForRole, getPortalSubtitle } from '../constants/roles'
+import { useAuthStore } from '../stores/auth'
 import IconSvg from './IconSvg.vue'
 
 const currentRoute = useRoute()
-const menuList = computed(() => menus)
+const auth = useAuthStore()
+const menuList = computed(() => getMenusForRole(auth.profile?.role))
+const portalSubtitle = computed(() => getPortalSubtitle(auth.profile?.role))
 
 </script>
 

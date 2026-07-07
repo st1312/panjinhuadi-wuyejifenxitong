@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { authApi } from '../api/services'
 import { configureRequest } from '../api/request'
+import { canUseProfileApi } from '../constants/roles'
 import type { UserProfile } from '../api/types'
 import {
   clearTokens,
@@ -97,13 +98,15 @@ export const useAuthStore = defineStore('auth', () => {
       remember
     )
     try {
-      profile.value = await authApi.profile()
-      username.value = profile.value.name
-      if (profile.value.propertyCompanyId) {
-        propertyCompanyId.value = profile.value.propertyCompanyId
-        localStorage.setItem(COMPANY_KEY, profile.value.propertyCompanyId)
+      if (canUseProfileApi(user?.role)) {
+        profile.value = await authApi.profile()
+        username.value = profile.value.name
+        if (profile.value.propertyCompanyId) {
+          propertyCompanyId.value = profile.value.propertyCompanyId
+          localStorage.setItem(COMPANY_KEY, profile.value.propertyCompanyId)
+        }
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile.value))
       }
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile.value))
     } catch {
       // profile 获取失败不影响登录
     }
