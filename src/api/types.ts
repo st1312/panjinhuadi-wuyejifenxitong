@@ -684,23 +684,27 @@ export interface DeliveryTaskItem {
   createdAt?: string
 }
 
+export interface OrderLineItem {
+  productId?: string
+  productName?: string
+  coverUrl?: string
+  quantity?: number
+  price?: number
+  subtotal?: number
+}
+
 export interface OrderItem {
   id: string
   orderNo?: string
   createdAt?: string
+  updatedAt?: string
   residentId?: string
   residentName?: string
   merchantId?: string
   merchantName?: string
   room?: string
   productSummary?: string
-  items?: Array<{
-    productId?: string
-    productName?: string
-    quantity?: number
-    price?: number
-    subtotal?: number
-  }>
+  items?: OrderLineItem[]
   totalAmount?: number
   deliveryFee?: number
   paymentMethod?: string
@@ -708,6 +712,14 @@ export interface OrderItem {
   coinUsed?: number
   cashAmount?: number
   deliveryAddress?: string
+  contactPhone?: string
+  remark?: string
+  courierId?: string | null
+  courierName?: string | null
+  deliveryId?: string | null
+  paidAt?: string | null
+  completedAt?: string | null
+  cancelledAt?: string | null
   orderStatus?: string
   status?: string
 }

@@ -92,6 +92,24 @@ export const ORDER_STATUS_LABEL: Record<string, string> = {
   refunded: '已退款'
 }
 
+export const PAYMENT_METHOD = {
+  MIXED: 'mixed',
+  POINT: 'point',
+  COIN: 'coin',
+  CASH: 'cash',
+  WECHAT: 'wechat',
+  ALIPAY: 'alipay'
+} as const
+
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  mixed: '混合支付',
+  point: '积分支付',
+  coin: '物业币支付',
+  cash: '现金',
+  wechat: '微信支付',
+  alipay: '支付宝'
+}
+
 export const VOTE_OPTION = {
   SUPPORT: 'support',
   OPPOSE: 'oppose',

@@ -573,6 +573,10 @@ export const merchantPortalApi = {
     return request<PageResult<OrderItem>>(`/orders${buildQuery(params)}`)
   },
 
+  getOrder(id: string) {
+    return request<OrderItem>(`/orders/${id}`)
+  },
+
   updateOrderStatus(id: string, orderStatus: string) {
     return request<OrderItem>(`/orders/${id}/status`, {
       method: 'PATCH',
