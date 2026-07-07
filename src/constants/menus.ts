@@ -24,6 +24,7 @@ export const merchantMenus: Menu[] = [
 ]
 
 export const courierMenus: Menu[] = [
+  { name: '工作台', icon: 'dashboard', route: 'courier-overview' },
   { name: '抢单大厅', icon: 'delivery', route: 'courier-available' },
   { name: '我的任务', icon: 'history', route: 'courier-tasks' }
 ]

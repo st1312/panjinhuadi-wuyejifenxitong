@@ -19,6 +19,7 @@ import MerchantPoints from '../views/merchant/MerchantPoints.vue'
 import MerchantWithdrawals from '../views/merchant/MerchantWithdrawals.vue'
 import CourierAvailable from '../views/courier/CourierAvailable.vue'
 import CourierTasks from '../views/courier/CourierTasks.vue'
+import CourierOverview from '../views/courier/CourierOverview.vue'
 import CoordinatorStats from '../views/coordinator/CoordinatorStats.vue'
 import CoordinatorRecords from '../views/coordinator/CoordinatorRecords.vue'
 import CoordinatorOverview from '../views/coordinator/CoordinatorOverview.vue'
@@ -126,6 +127,12 @@ const routes = [
         name: 'merchant-withdrawals',
         component: MerchantWithdrawals,
         meta: { title: '提现管理', roles: [USER_ROLE.MERCHANT] }
+      },
+      {
+        path: 'courier/overview',
+        name: 'courier-overview',
+        component: CourierOverview,
+        meta: { title: '工作台', roles: [USER_ROLE.COURIER] }
       },
       {
         path: 'courier/available',

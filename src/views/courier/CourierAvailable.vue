@@ -3,7 +3,7 @@
     <div class="header">
       <div>
         <h1 class="title">抢单大厅</h1>
-        <p class="desc">查看待配送订单并抢单</p>
+        <p class="desc">查看待配送订单并抢单 · 共 {{ total }} 单可抢</p>
       </div>
       <button class="btnSecondary" :disabled="loading" @click="load(page)">刷新</button>
     </div>
@@ -22,6 +22,9 @@
           <div class="row"><span class="label">取货</span><span>{{ item.pickupAddress || item.merchantAddress || '—' }}</span></div>
           <div class="row"><span class="label">送达</span><span>{{ item.deliveryAddress || '—' }}</span></div>
           <div class="row"><span class="label">联系</span><span>{{ item.contactPhone || '—' }}</span></div>
+          <div v-if="item.timeoutMinutes" class="row warn">
+            <span class="label">时限</span><span>{{ item.timeoutMinutes }} 分钟内完成</span>
+          </div>
           <div class="cardFooter">
             <span class="time">{{ item.createdAt || '—' }}</span>
             <button class="btnPrimary" :disabled="actionId === item.id" @click="grab(item.id)">
@@ -32,9 +35,9 @@
       </div>
       <p v-else-if="!loading" class="empty">暂无可抢订单</p>
       <div v-if="totalPages > 1" class="pagination">
-        <button class="pageBtn" :disabled="page <= 1" @click="changePage(page - 1)">&lt;</button>
+        <button class="pageBtn" :disabled="page <= 1 || loading" @click="changePage(page - 1)">&lt;</button>
         <span class="pageInfo">{{ page }} / {{ totalPages }}</span>
-        <button class="pageBtn" :disabled="page >= totalPages" @click="changePage(page + 1)">&gt;</button>
+        <button class="pageBtn" :disabled="page >= totalPages || loading" @click="changePage(page + 1)">&gt;</button>
       </div>
     </div>
   </div>
@@ -54,6 +57,7 @@ const error = ref('')
 const successMsg = ref('')
 const page = ref(1)
 const totalPages = ref(1)
+const total = ref(0)
 const actionId = ref('')
 
 function formatMoney(value?: number) {
@@ -66,10 +70,14 @@ async function load(pageNo = 1) {
   error.value = ''
   successMsg.value = ''
   try {
-    const res = await courierPortalApi.pending({ page: pageNo, pageSize: 10, sort: '-createdAt' })
+    let res = await courierPortalApi.pending({ page: pageNo, pageSize: 10, sort: '-createdAt' })
+    if (!res.list?.length && pageNo === 1) {
+      res = await courierPortalApi.available({ page: pageNo, pageSize: 10, sort: '-createdAt' })
+    }
     deliveries.value = res.list || []
     page.value = res.pagination?.page || pageNo
     totalPages.value = res.pagination?.totalPages || 1
+    total.value = res.pagination?.total ?? deliveries.value.length
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '订单加载失败'
   } finally {
@@ -90,7 +98,7 @@ async function grab(id: string) {
     await load(page.value)
     setTimeout(() => router.push({ name: 'courier-tasks' }), 800)
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '抢单失败'
+    error.value = e instanceof ApiError ? e.message : '抢单失败，可能已被其他快递员抢走'
   } finally {
     actionId.value = ''
   }
@@ -115,8 +123,9 @@ onMounted(() => load(1))
 .cardTop { display: flex; justify-content: space-between; margin-bottom: 12px; }
 .orderNo { font-weight: 600; color: #1f1f2e; }
 .earning { color: #3aaf7d; font-weight: 600; }
-.row { display: flex; gap: 12px; font-size: 13px; margin-bottom: 8px; }
+.row { display: flex; gap: 12px; font-size: 13px; margin-bottom: 8px; line-height: 1.5; }
 .row .label { width: 40px; color: #8c8c9a; flex-shrink: 0; }
+.row.warn span:last-child { color: #d48806; }
 .cardFooter { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f3; }
 .time { font-size: 12px; color: #8c8c9a; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; }

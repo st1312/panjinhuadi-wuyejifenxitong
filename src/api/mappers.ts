@@ -557,7 +557,7 @@ export function mapPointsOverview(pool?: PointPool, overview?: DashboardOverview
 }
 
 function deliveryStatusClass(status?: string) {
-  if (status === DELIVERY_STATUS.GRABBED) return 'grabbed'
+  if (status === DELIVERY_STATUS.ACCEPTED || status === DELIVERY_STATUS.GRABBED) return 'grabbed'
   if (status === DELIVERY_STATUS.PENDING) return 'pending'
   if (status === DELIVERY_STATUS.DELIVERING) return 'delivering'
   return 'completed'

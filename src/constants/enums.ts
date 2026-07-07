@@ -378,21 +378,33 @@ export const COURIER_STATUS_LABEL: Record<string, string> = {
 
 export const DELIVERY_STATUS = {
   PENDING: 'pending',
+  ACCEPTED: 'accepted',
   GRABBED: 'grabbed',
   DELIVERING: 'delivering',
   DELIVERED: 'delivered',
   COMPLETED: 'completed',
-  CANCELLED: 'cancelled'
+  CANCELLED: 'cancelled',
+  FAILED: 'failed'
 } as const
 
 export const DELIVERY_STATUS_LABEL: Record<string, string> = {
   pending: '待抢单',
+  accepted: '已接单',
   grabbed: '已抢单',
   delivering: '配送中',
   delivered: '已送达',
   completed: '已完成',
-  cancelled: '已取消'
+  cancelled: '已取消',
+  failed: '配送失败'
 }
+
+export const COURIER_TASK_STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: DELIVERY_STATUS.ACCEPTED, label: '已接单' },
+  { value: DELIVERY_STATUS.DELIVERING, label: '配送中' },
+  { value: DELIVERY_STATUS.COMPLETED, label: '已完成' },
+  { value: DELIVERY_STATUS.CANCELLED, label: '已取消' }
+]
 
 export const DELIVERY_CAPACITY_DIMENSION = {
   H24: '24h',

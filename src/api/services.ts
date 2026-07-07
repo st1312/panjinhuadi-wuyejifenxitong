@@ -662,6 +662,10 @@ export const courierPortalApi = {
     return request<PageResult<CourierDeliveryItem>>(`/deliveries/pending${buildQuery(params)}`)
   },
 
+  available(params: { page?: number; pageSize?: number; sort?: string } = {}) {
+    return request<PageResult<CourierDeliveryItem>>(`/deliveries/available${buildQuery(params)}`)
+  },
+
   my(params: {
     page?: number
     pageSize?: number

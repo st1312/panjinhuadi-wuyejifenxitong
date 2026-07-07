@@ -845,7 +845,11 @@ export interface CourierDeliveryItem {
   timeoutMinutes?: number
   acceptedAt?: string
   timeoutAt?: string
+  deliveredAt?: string
+  remark?: string
+  proofImageUrls?: string[]
   createdAt?: string
+  updatedAt?: string
 }
 
 export interface DeliveryCompletePayload {

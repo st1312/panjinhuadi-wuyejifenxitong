@@ -36,7 +36,7 @@ export function getRoleHomeRoute(role?: string | null): string {
     case USER_ROLE.MERCHANT:
       return 'merchant-overview'
     case USER_ROLE.COURIER:
-      return 'courier-available'
+      return 'courier-overview'
     case USER_ROLE.COORDINATOR:
       return 'coordinator-overview'
     case USER_ROLE.SECTOR_LEADER:
