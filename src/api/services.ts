@@ -50,6 +50,7 @@ import type {
   CoinFreezeRecordItem,
   CommunityServiceCreatePayload,
   CommunityServiceItem,
+  CommunityServiceUpdatePayload,
   CourierDeliveryItem,
   DeliveryCompletePayload,
   DistributionRecordItem,
@@ -735,6 +736,23 @@ export const serviceApi = {
     return request<CommunityServiceItem>('/services', {
       method: 'POST',
       body: JSON.stringify(payload)
+    })
+  },
+
+  get(id: string) {
+    return request<CommunityServiceItem>(`/services/${id}`)
+  },
+
+  update(id: string, payload: CommunityServiceUpdatePayload) {
+    return request<CommunityServiceItem>(`/services/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  remove(id: string) {
+    return request<{ id: string; status?: string; deletedAt?: string }>(`/services/${id}`, {
+      method: 'DELETE'
     })
   }
 }

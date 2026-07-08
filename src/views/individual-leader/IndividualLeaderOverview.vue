@@ -12,11 +12,11 @@
       <div class="stats">
         <div class="statCard purple">
           <div class="label">姓名</div>
-          <div class="value small">{{ profile?.name || auth.username || '—' }}</div>
+          <div class="value small">{{ displayName }}</div>
         </div>
         <div class="statCard">
           <div class="label">所属物业</div>
-          <div class="value small">{{ profile?.propertyName || '—' }}</div>
+          <div class="value small">{{ propertyCompanyName || '—' }}</div>
         </div>
         <div class="statCard green">
           <div class="label">我的服务数</div>
@@ -24,7 +24,7 @@
         </div>
         <div class="statCard">
           <div class="label">账号状态</div>
-          <div class="value small">{{ getEnumLabel(RESIDENT_STATUS_LABEL, profile?.status) }}</div>
+          <div class="value small">{{ accountStatus }}</div>
         </div>
       </div>
 
@@ -50,13 +50,25 @@ import { useAuthStore } from '../../stores/auth'
 const auth = useAuthStore()
 const profile = computed(() => auth.profile)
 const serviceCount = ref(0)
+const propertyCompanyName = ref('')
+const providerName = ref('')
 const loading = ref(false)
+
+const displayName = computed(
+  () => providerName.value || profile.value?.name || auth.username || '—'
+)
+const accountStatus = computed(() =>
+  getEnumLabel(RESIDENT_STATUS_LABEL, profile.value?.status, '—')
+)
 
 async function loadServices() {
   loading.value = true
   try {
-    const servicesRes = await serviceApi.list({ mine: true, page: 1, pageSize: 1 })
+    const servicesRes = await serviceApi.list({ mine: true, page: 1, pageSize: 1, sort: '-createdAt' })
     serviceCount.value = servicesRes.pagination?.total ?? servicesRes.list?.length ?? 0
+    const first = servicesRes.list?.[0]
+    propertyCompanyName.value = first?.propertyCompanyName || ''
+    providerName.value = first?.providerName || ''
   } catch (e) {
     console.error(e instanceof ApiError ? e.message : e)
   } finally {

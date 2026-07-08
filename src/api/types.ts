@@ -890,15 +890,27 @@ export interface CommunityServiceItem {
   id: string
   name: string
   description?: string
+  coverUrls?: string[]
   coverUrl?: string
   category?: string
   categoryName?: string
   price?: number
   memberPrice?: number
   priceUnit?: string
+  providerId?: string
+  providerName?: string
+  providerType?: string
   isSubscription?: boolean
+  subscriptionRequired?: boolean
+  monthlyFee?: number | null
+  yearlyFee?: number | null
+  rankOrder?: number
+  propertyCompanyId?: string
+  propertyCompanyName?: string
   status?: string
   createdAt?: string
+  updatedAt?: string
+  deletedAt?: string
 }
 
 export interface CommunityServiceCreatePayload {
@@ -910,6 +922,17 @@ export interface CommunityServiceCreatePayload {
   memberPrice?: number
   priceUnit?: string
   isSubscription?: boolean
+}
+
+export interface CommunityServiceUpdatePayload {
+  name?: string
+  description?: string
+  coverUrls?: string[]
+  price?: number
+  memberPrice?: number
+  priceUnit?: string
+  category?: string
+  status?: string
 }
 
 export interface SectorLeaderDetail {
