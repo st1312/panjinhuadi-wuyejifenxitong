@@ -156,11 +156,11 @@
                 <option v-for="opt in targetTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
-            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY" class="field">
+            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.BUILDING" class="field">
               <label class="label">小区 ID</label>
               <input v-model="form.communityId" class="input" placeholder="指定小区时填写" />
             </div>
-            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT" class="field">
+            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.ROLE" class="field">
               <label class="label">关联商家</label>
               <select v-model="form.merchantId" class="input">
                 <option value="">请选择商家</option>
@@ -274,7 +274,7 @@ const statusFormOptions = SPECIAL_OFFER_STATUS_OPTIONS
 const form = reactive({
   title: '',
   content: '',
-  targetType: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS,
+  targetType: SPECIAL_OFFER_TARGET_TYPE.ALL,
   communityId: DEFAULT_COMMUNITY_ID,
   merchantId: '',
   targetTags: '',
@@ -343,7 +343,7 @@ function resetForm() {
   submitting.value = false
   form.title = ''
   form.content = ''
-  form.targetType = SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS
+  form.targetType = SPECIAL_OFFER_TARGET_TYPE.ALL
   form.communityId = DEFAULT_COMMUNITY_ID
   form.merchantId = ''
   form.targetTags = ''
@@ -398,10 +398,10 @@ function buildPayload(): SpecialOfferCreatePayload {
   if (form.minConsumption != null) payload.minConsumption = form.minConsumption
   if (form.totalQuota != null) payload.totalQuota = form.totalQuota
   if (form.perUserQuota != null) payload.perUserQuota = form.perUserQuota
-  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY) {
+  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.BUILDING) {
     payload.communityId = form.communityId.trim() || DEFAULT_COMMUNITY_ID
   }
-  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT && form.merchantId) {
+  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.ROLE && form.merchantId) {
     payload.merchantId = form.merchantId
   }
   return payload
@@ -499,7 +499,7 @@ function validateForm() {
   if (!form.targetType) return '请选择推送对象'
   if (!form.startTime || !form.endTime) return '请填写有效期'
   if (new Date(form.endTime) <= new Date(form.startTime)) return '结束时间须晚于开始时间'
-  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT && !form.merchantId) {
+  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.ROLE && !form.merchantId) {
     return '指定商户时请选择商家'
   }
   if (form.minConsumption != null && form.minConsumption < 0) return '最低消费不能为负数'

@@ -409,7 +409,8 @@ export function mapAnnouncements(list: AnnouncementItem[]) {
     status: item.status || ANNOUNCEMENT_STATUS.DRAFT,
     statusLabel: getEnumLabel(ANNOUNCEMENT_STATUS_LABEL, item.status, '—'),
     announcementType: item.announcementType,
-    announcementTypeLabel: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, normalizeAnnouncementType(item.announcementType), '—')
+    announcementTypeLabel: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, normalizeAnnouncementType(item.announcementType), '—'),
+    communityId: item.communityId
   }))
 }
 

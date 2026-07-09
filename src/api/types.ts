@@ -363,6 +363,7 @@ export interface AnnouncementUpdatePayload {
   title?: string
   content?: string
   announcementType?: string
+  communityId?: string
   coverUrls?: string[]
   targetRoles?: string[]
   targetBuildings?: string[]

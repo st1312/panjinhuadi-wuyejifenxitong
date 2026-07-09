@@ -89,7 +89,7 @@
                 <option v-for="opt in targetTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
-            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT" class="field">
+            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.ROLE" class="field">
               <label class="label">关联商家</label>
               <select v-model="form.merchantId" class="input">
                 <option value="">请选择商家</option>
@@ -148,10 +148,8 @@ import {
   SPECIAL_OFFER_STATUS_OPTIONS,
   SPECIAL_OFFER_TARGET_TYPE,
   SPECIAL_OFFER_TARGET_TYPE_LABEL,
-  SPECIAL_OFFER_TARGET_TYPE_OPTIONS
+  SPECIAL_OFFER_COORDINATOR_TARGET_TYPE_OPTIONS
 } from '../../constants/enums'
-
-const DEFAULT_COMMUNITY_ID = import.meta.env.VITE_COMMUNITY_ID || 'com_demo001'
 
 const offers = ref<SpecialOfferItem[]>([])
 const merchantOptions = ref<MerchantItem[]>([])
@@ -166,13 +164,13 @@ const modalOpen = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 
-const targetTypeOptions = SPECIAL_OFFER_TARGET_TYPE_OPTIONS
+const targetTypeOptions = SPECIAL_OFFER_COORDINATOR_TARGET_TYPE_OPTIONS
 const statusOptions = SPECIAL_OFFER_STATUS_OPTIONS
 
 const form = reactive({
   title: '',
   content: '',
-  targetType: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS,
+  targetType: SPECIAL_OFFER_TARGET_TYPE.ALL,
   merchantId: '',
   discountInfo: '',
   minConsumption: undefined as number | undefined,
@@ -246,7 +244,7 @@ function changePage(next: number) {
 function openCreate() {
   form.title = ''
   form.content = ''
-  form.targetType = SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS
+  form.targetType = SPECIAL_OFFER_TARGET_TYPE.ALL
   form.merchantId = ''
   form.discountInfo = ''
   form.minConsumption = undefined
@@ -275,7 +273,7 @@ async function submitCreate() {
     formError.value = '请填写有效期'
     return
   }
-  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT && !form.merchantId) {
+  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.ROLE && !form.merchantId) {
     formError.value = '指定商户时请选择商家'
     return
   }
@@ -289,9 +287,7 @@ async function submitCreate() {
       startTime: toApiDateTime(form.startTime),
       endTime: toApiDateTime(form.endTime),
       merchantId:
-        form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT ? form.merchantId : undefined,
-      communityId:
-        form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY ? DEFAULT_COMMUNITY_ID : undefined,
+        form.targetType === SPECIAL_OFFER_TARGET_TYPE.ROLE ? form.merchantId : undefined,
       discountInfo: form.discountInfo.trim() || undefined,
       minConsumption: form.minConsumption,
       status: form.status || SPECIAL_OFFER_STATUS.DRAFT

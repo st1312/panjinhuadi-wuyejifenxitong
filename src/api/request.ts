@@ -58,6 +58,11 @@ function withCompanyQuery(path: string) {
     return path
   }
 
+  // 公告详情/更新/删除仅按 id 访问，不附加 propertyCompanyId，避免 GET/PUT 403
+  if (/^\/announcements\/[^/]+$/.test(pathname)) {
+    return path
+  }
+
   if (
     !path.startsWith('/admin/') &&
     !path.startsWith('/reports/') &&

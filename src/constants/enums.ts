@@ -324,26 +324,53 @@ export const SECTOR_TYPE_OPTIONS = [
   { value: SECTOR_TYPE.OTHER, label: '其他' }
 ]
 
+/** 特惠推送 targetType（API 值，与 SpecialOfferService.normalizeTargetType 对齐） */
 export const SPECIAL_OFFER_TARGET_TYPE = {
-  ALL_RESIDENTS: '全体业主',
-  SPECIFIC_COMMUNITY: '指定小区',
-  SPECIFIC_MERCHANT: '指定商户'
+  ALL: 'all',
+  TAG: 'tag',
+  BUILDING: 'building',
+  ROLE: 'role'
 } as const
 
 export const SPECIAL_OFFER_TARGET_TYPE_LABEL: Record<string, string> = {
-  [SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS]: '全体业主',
-  [SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY]: '指定小区',
-  [SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT]: '指定商户',
-  all: '全体业主',
+  [SPECIAL_OFFER_TARGET_TYPE.ALL]: '全体业主',
+  [SPECIAL_OFFER_TARGET_TYPE.TAG]: '标签',
+  [SPECIAL_OFFER_TARGET_TYPE.BUILDING]: '指定小区',
+  [SPECIAL_OFFER_TARGET_TYPE.ROLE]: '指定商户',
+  全体业主: '全体业主',
+  指定小区: '指定小区',
+  指定商户: '指定商户',
+  全部: '全体业主',
+  标签: '标签',
+  小区: '指定小区',
+  '商户/角色': '指定商户',
   community: '指定小区',
   merchant: '指定商户'
 }
 
 export const SPECIAL_OFFER_TARGET_TYPE_OPTIONS = [
-  { value: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS, label: '全体业主' },
-  { value: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY, label: '指定小区' },
-  { value: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT, label: '指定商户' }
+  { value: SPECIAL_OFFER_TARGET_TYPE.ALL, label: '全体业主' },
+  { value: SPECIAL_OFFER_TARGET_TYPE.BUILDING, label: '指定小区' },
+  { value: SPECIAL_OFFER_TARGET_TYPE.ROLE, label: '指定商户' }
 ]
+
+/** 统筹特惠推送可选 targetType（不可指定小区） */
+export const SPECIAL_OFFER_COORDINATOR_TARGET_TYPE_OPTIONS = [
+  { value: SPECIAL_OFFER_TARGET_TYPE.ALL, label: '全体业主' },
+  { value: SPECIAL_OFFER_TARGET_TYPE.ROLE, label: '指定商户' }
+]
+
+const SPECIAL_OFFER_TARGET_TYPE_ALIASES: Record<string, string> = {
+  全体业主: SPECIAL_OFFER_TARGET_TYPE.ALL,
+  指定小区: SPECIAL_OFFER_TARGET_TYPE.BUILDING,
+  指定商户: SPECIAL_OFFER_TARGET_TYPE.ROLE,
+  全部: SPECIAL_OFFER_TARGET_TYPE.ALL,
+  标签: SPECIAL_OFFER_TARGET_TYPE.TAG,
+  小区: SPECIAL_OFFER_TARGET_TYPE.BUILDING,
+  '商户/角色': SPECIAL_OFFER_TARGET_TYPE.ROLE,
+  community: SPECIAL_OFFER_TARGET_TYPE.BUILDING,
+  merchant: SPECIAL_OFFER_TARGET_TYPE.ROLE
+}
 
 export const SPECIAL_OFFER_DISCOUNT_TYPE = {
   FIXED: 'fixed',
@@ -384,12 +411,6 @@ export const SPECIAL_OFFER_STATUS_OPTIONS = [
   { value: SPECIAL_OFFER_STATUS.ENDED, label: '已结束' }
 ]
 
-const SPECIAL_OFFER_TARGET_TYPE_LEGACY: Record<string, string> = {
-  all: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS,
-  community: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY,
-  merchant: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT
-}
-
 const SPECIAL_OFFER_STATUS_ALIASES: Record<string, string> = {
   草稿: SPECIAL_OFFER_STATUS.DRAFT,
   待发布: SPECIAL_OFFER_STATUS.PENDING_PUBLISH,
@@ -399,9 +420,10 @@ const SPECIAL_OFFER_STATUS_ALIASES: Record<string, string> = {
 }
 
 export function normalizeSpecialOfferTargetType(value?: string) {
-  if (!value) return SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS
-  if (SPECIAL_OFFER_TARGET_TYPE_LABEL[value]) return value
-  return SPECIAL_OFFER_TARGET_TYPE_LEGACY[value] || value
+  if (!value) return SPECIAL_OFFER_TARGET_TYPE.ALL
+  const canonical = Object.values(SPECIAL_OFFER_TARGET_TYPE) as string[]
+  if (canonical.includes(value)) return value
+  return SPECIAL_OFFER_TARGET_TYPE_ALIASES[value] || SPECIAL_OFFER_TARGET_TYPE.ALL
 }
 
 export function normalizeSpecialOfferStatus(value?: string) {

@@ -351,6 +351,7 @@ export const announcementApi = {
     communityId?: string
     merchantId?: string
     readStatus?: string
+    status?: string
     sort?: string
   } = {}) {
 

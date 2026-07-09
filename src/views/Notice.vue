@@ -202,11 +202,6 @@
                 {{ opt.label }}
               </option>
             </select>
-            <select v-model="listStatusFilter" class="filterSelect">
-              <option v-for="opt in ANNOUNCEMENT_LIST_STATUS_OPTIONS" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
           </div>
           <form class="search" @submit.prevent="submitSearch">
             <IconSvg name="search" />
@@ -225,16 +220,15 @@
               <th>标题</th>
               <th>目标群体</th>
               <th>覆盖楼栋</th>
-              <th>状态</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
+              <td colspan="5" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
             </tr>
             <tr v-else-if="!filteredNotices.length">
-              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">暂无通告</td>
+              <td colspan="5" style="text-align:center;padding:24px;color:#8c8c9a">暂无通告</td>
             </tr>
             <template v-else>
               <tr v-for="notice in filteredNotices" :key="notice.id">
@@ -254,27 +248,17 @@
                   </div>
                 </td>
                 <td>
-                  <span class="status" :class="statusClass(notice.status)">{{ notice.statusLabel }}</span>
-                </td>
-                <td>
                   <div class="rowActions">
                     <button type="button" class="detail" @click="openDetailModal(notice.id)">详情</button>
                     <button
-                      v-if="notice.status !== ANNOUNCEMENT_STATUS.ARCHIVED"
                       type="button"
                       class="detail"
+                      :disabled="editingLoadingId === notice.id"
                       @click="startEdit(notice.id)"
                     >
-                      编辑
+                      {{ editingLoadingId === notice.id ? '加载中...' : '编辑' }}
                     </button>
-                    <button
-                      v-if="notice.status !== ANNOUNCEMENT_STATUS.ARCHIVED"
-                      type="button"
-                      class="danger"
-                      @click="openDeleteModal(notice.id, notice.title)"
-                    >
-                      删除
-                    </button>
+                    <button type="button" class="danger" @click="openDeleteModal(notice.id, notice.title)">删除</button>
                   </div>
                 </td>
               </tr>
@@ -331,7 +315,7 @@
             <div class="modalFooter">
               <button type="button" class="btnSecondary" @click="closeDetailModal">关闭</button>
               <button
-                v-if="detailData && detailData.status !== ANNOUNCEMENT_STATUS.ARCHIVED"
+                v-if="detailData"
                 type="button"
                 class="btnPrimary"
                 @click="startEdit(detailData.id); closeDetailModal()"
@@ -376,10 +360,8 @@ import type { AnnouncementCollectField, AnnouncementCreatePayload, AnnouncementI
 import { useAuthStore } from '../stores/auth'
 import {
   ANNOUNCEMENT_COLLECT_FIELD_TYPE_OPTIONS,
-  ANNOUNCEMENT_LIST_STATUS_OPTIONS,
   ANNOUNCEMENT_LIST_TYPE_OPTIONS,
   ANNOUNCEMENT_STATUS,
-  ANNOUNCEMENT_STATUS_LABEL,
   ANNOUNCEMENT_TARGET_ROLE_OPTIONS,
   ANNOUNCEMENT_TYPE,
   ANNOUNCEMENT_TYPE_LABEL,
@@ -402,6 +384,7 @@ const authStore = useAuthStore()
 
 const loading = ref(true)
 const formSubmitting = ref(false)
+const editingLoadingId = ref('')
 const formError = ref('')
 const formSuccess = ref('')
 const editingId = ref('')
@@ -431,8 +414,8 @@ const selectAllBuildings = ref(true)
 const selectAllTargetRoles = ref(false)
 const buildingOptions = ref<string[]>([])
 const listTypeFilter = ref('')
-const listStatusFilter = ref('')
 
+const rawNotices = ref<AnnouncementItem[]>([])
 const notices = ref<ReturnType<typeof mapAnnouncements>>([])
 const noticesTotal = ref(0)
 const currentPage = ref(1)
@@ -441,13 +424,9 @@ const searchKeyword = ref('')
 let searchTimer: ReturnType<typeof setTimeout>
 
 const filteredNotices = computed(() => {
-  let list = notices.value
-  if (listStatusFilter.value) {
-    list = list.filter((item) => item.status === listStatusFilter.value)
-  }
   const q = searchKeyword.value.trim().toLowerCase()
-  if (!q) return list
-  return list.filter((item) => item.title.toLowerCase().includes(q))
+  if (!q) return notices.value
+  return notices.value.filter((item) => item.title.toLowerCase().includes(q))
 })
 
 const detailModalOpen = ref(false)
@@ -488,7 +467,6 @@ const detailRows = computed(() => {
     { label: '公告类型', value: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, normalizeAnnouncementType(d.announcementType)) },
     { label: '物业公司', value: d.propertyCompanyId || '—' },
     { label: '小区 ID', value: d.communityId || '—' },
-    { label: '状态', value: getEnumLabel(ANNOUNCEMENT_STATUS_LABEL, d.status) },
     { label: '覆盖楼栋', value: d.targetBuildings?.length ? d.targetBuildings.join('、') : '全部楼栋' },
     { label: '目标群体', value: formatAnnouncementTargetRoles(d.targetRoles) },
     { label: '关联商家', value: d.merchantId || '—' },
@@ -498,12 +476,6 @@ const detailRows = computed(() => {
     { label: '更新时间', value: d.updatedAt || '—' }
   ]
 })
-
-function statusClass(status?: string) {
-  if (status === ANNOUNCEMENT_STATUS.PUBLISHED) return 'published'
-  if (status === ANNOUNCEMENT_STATUS.ARCHIVED) return 'archived'
-  return 'draft'
-}
 
 function resolveErrorMessage(e: unknown) {
   if (e instanceof ApiError) return e.message
@@ -626,17 +598,19 @@ function buildUpdatePayload(status: string): AnnouncementUpdatePayload {
   const payload: AnnouncementUpdatePayload = {
     title: form.value.title.trim(),
     content: form.value.content.trim(),
-    announcementType: form.value.announcementType,
     status,
     collectEnabled: form.value.collectEnabled
   }
-  const buildings = buildTargetBuildings()
-  payload.targetBuildings = buildings ?? []
-  payload.targetRoles = buildTargetRoles() ?? []
+  if (!selectAllBuildings.value) {
+    payload.targetBuildings = buildTargetBuildings() ?? []
+  }
+  if (!selectAllTargetRoles.value) {
+    payload.targetRoles = buildTargetRoles() ?? []
+  }
   const coverUrls = parseCoverUrls(form.value.coverUrlsText)
-  payload.coverUrls = coverUrls
+  if (coverUrls.length) payload.coverUrls = coverUrls
   const collectFields = buildCollectFields()
-  payload.collectFields = collectFields ?? []
+  if (collectFields?.length) payload.collectFields = collectFields
   return payload
 }
 
@@ -706,12 +680,14 @@ async function loadNotices(page = currentPage.value) {
       communityId: DEFAULT_COMMUNITY_ID,
       sort: '-publishedAt'
     })
-    notices.value = mapAnnouncements(res.list || [])
+    rawNotices.value = (res.list || []).filter((item) => item.status !== ANNOUNCEMENT_STATUS.ARCHIVED)
+    notices.value = mapAnnouncements(rawNotices.value)
     noticesTotal.value = res.pagination?.total ?? notices.value.length
     currentPage.value = res.pagination?.page ?? page
     totalPages.value = res.pagination?.totalPages ?? 1
   } catch (e) {
     console.error(e)
+    rawNotices.value = []
     notices.value = []
     noticesTotal.value = 0
     totalPages.value = 1
@@ -772,11 +748,22 @@ async function submitForm(status: string) {
 }
 
 async function startEdit(id: string) {
+  formError.value = ''
+  formSuccess.value = ''
+  editingLoadingId.value = id
   try {
     const data = await announcementApi.get(id)
     applyDetailToForm(data)
   } catch (e) {
-    formError.value = resolveErrorMessage(e)
+    const cached = rawNotices.value.find((item) => item.id === id)
+    if (cached) {
+      applyDetailToForm(cached)
+    } else {
+      formError.value = resolveErrorMessage(e)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  } finally {
+    editingLoadingId.value = ''
   }
 }
 
@@ -818,9 +805,13 @@ async function submitDelete() {
   if (!deleteTargetId.value) return
   deleteSubmitting.value = true
   deleteError.value = ''
+  const deletedId = deleteTargetId.value
   try {
-    await announcementApi.remove(deleteTargetId.value)
-    if (editingId.value === deleteTargetId.value) resetForm()
+    await announcementApi.remove(deletedId)
+    if (editingId.value === deletedId) resetForm()
+    rawNotices.value = rawNotices.value.filter((item) => item.id !== deletedId)
+    notices.value = mapAnnouncements(rawNotices.value)
+    if (noticesTotal.value > 0) noticesTotal.value -= 1
     closeDeleteModal()
     await loadNotices(currentPage.value)
   } catch (e) {
@@ -921,16 +912,9 @@ onMounted(async () => {
 .readonlyRow span { color: #8c8c9a; }
 .readonlyRow strong { color: #1f1f2e; font-weight: 500; }
 .rolesGroup.disabledGroup { opacity: 0.55; }
-.history .status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
-.history .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
-.history .status.published { color: #3aaf7d; }
-.history .status.published::before { background: #3aaf7d; }
-.history .status.draft { color: #f5a623; }
-.history .status.draft::before { background: #f5a623; }
-.history .status.archived { color: #8c8c9a; }
-.history .status.archived::before { background: #c8c8d0; }
 .history .rowActions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .history .detail { font-size: 14px; color: #5c5c9e; background: transparent; border: none; cursor: pointer; padding: 0; }
+.history .detail:disabled { opacity: 0.6; cursor: wait; }
 .history .danger { font-size: 14px; color: #e05c5c; background: transparent; border: none; cursor: pointer; padding: 0; }
 .history .footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 1px solid #f0f0f3; margin: 0 -24px -24px; flex-wrap: wrap; gap: 12px; }
 .history .total { font-size: 13px; color: #8c8c9a; }
