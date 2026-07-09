@@ -47,8 +47,24 @@
           </p>
         </div>
         <div class="field">
-          <label class="label">顾客 ID</label>
-          <input v-model="grantForm.residentId" class="input" placeholder="res_xxx" />
+          <label class="label">选择顾客</label>
+          <select
+            v-model="grantForm.orderId"
+            class="input"
+            :disabled="ordersLoading"
+          >
+            <option value="">请从历史订单选择顾客</option>
+            <option v-for="order in orderOptions" :key="order.id" :value="order.id">
+              {{ formatOrderOption(order) }}
+            </option>
+          </select>
+          <p v-if="selectedOrder" class="hint">
+            顾客：{{ selectedOrder.residentName || '—' }}
+            <template v-if="selectedOrder.contactPhone"> · {{ selectedOrder.contactPhone }}</template>
+          </p>
+          <p v-else-if="!ordersLoading && !orderOptions.length" class="hint warn">
+            暂无含顾客信息的历史订单
+          </p>
         </div>
         <div class="field">
           <label class="label">赠送积分</label>
@@ -66,7 +82,7 @@
         </div>
         <button
           class="btnPrimary"
-          :disabled="grantSubmitting || !approvedPurchases.length"
+          :disabled="grantSubmitting || !approvedPurchases.length || !orderOptions.length"
           @click="submitGrant"
         >
           {{ grantSubmitting ? '赠送中...' : '确认赠送' }}
@@ -116,7 +132,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { merchantPortalApi } from '../../api/services'
-import type { MerchantPointPurchaseItem } from '../../api/types'
+import type { MerchantPointPurchaseItem, OrderItem } from '../../api/types'
 import { ApiError } from '../../api/request'
 import {
   getEnumLabel,
@@ -127,8 +143,10 @@ import {
 
 const purchases = ref<MerchantPointPurchaseItem[]>([])
 const approvedPurchases = ref<MerchantPointPurchaseItem[]>([])
+const orderOptions = ref<OrderItem[]>([])
 const loading = ref(false)
 const approvedLoading = ref(false)
+const ordersLoading = ref(false)
 const listError = ref('')
 const auditFilter = ref('')
 const purchaseSubmitting = ref(false)
@@ -141,13 +159,17 @@ const grantMsgType = ref('success')
 const purchaseForm = reactive({ pointAmount: 1000, payAmount: 100 })
 const grantForm = reactive({
   purchaseId: '',
-  residentId: '',
+  orderId: '',
   pointAmount: 50,
   description: '消费赠送'
 })
 
 const selectedPurchase = computed(() =>
   approvedPurchases.value.find((item) => item.id === grantForm.purchaseId)
+)
+
+const selectedOrder = computed(() =>
+  orderOptions.value.find((order) => order.id === grantForm.orderId)
 )
 
 function formatMoney(value?: number) {
@@ -160,6 +182,32 @@ function formatPurchaseOption(item: MerchantPointPurchaseItem) {
   const amount = formatMoney(item.payAmount)
   const time = item.createdAt || item.auditedAt || ''
   return `${points} 积分 · ¥${amount}${time ? ` · ${time}` : ''}`
+}
+
+function formatOrderOption(order: OrderItem) {
+  const name = order.residentName || '未知顾客'
+  const no = order.orderNo || order.id
+  const time = order.createdAt || ''
+  return `${name} · ${no}${time ? ` · ${time}` : ''}`
+}
+
+async function loadOrderOptions() {
+  ordersLoading.value = true
+  try {
+    const res = await merchantPortalApi.orders({
+      page: 1,
+      pageSize: 50,
+      sort: '-createdAt'
+    })
+    orderOptions.value = (res.list || []).filter((order) => order.residentId)
+    if (grantForm.orderId && !orderOptions.value.some((order) => order.id === grantForm.orderId)) {
+      grantForm.orderId = ''
+    }
+  } catch {
+    orderOptions.value = []
+  } finally {
+    ordersLoading.value = false
+  }
 }
 
 async function loadApprovedPurchases() {
@@ -201,7 +249,7 @@ async function loadPurchases(page = 1) {
 }
 
 async function reloadAll() {
-  await Promise.all([loadPurchases(1), loadApprovedPurchases()])
+  await Promise.all([loadPurchases(1), loadApprovedPurchases(), loadOrderOptions()])
 }
 
 async function submitPurchase() {
@@ -234,8 +282,8 @@ async function submitGrant() {
     grantMsgType.value = 'error'
     return
   }
-  if (!grantForm.residentId.trim()) {
-    grantMsg.value = '请填写顾客 ID'
+  if (!grantForm.orderId || !selectedOrder.value?.residentId) {
+    grantMsg.value = '请从历史订单选择顾客'
     grantMsgType.value = 'error'
     return
   }
@@ -254,13 +302,13 @@ async function submitGrant() {
   try {
     await merchantPortalApi.grantPoints({
       purchaseId: grantForm.purchaseId,
-      residentId: grantForm.residentId.trim(),
+      residentId: selectedOrder.value.residentId,
       pointAmount: grantForm.pointAmount,
       description: grantForm.description.trim() || undefined
     })
     grantMsg.value = '积分赠送成功'
     grantMsgType.value = 'success'
-    grantForm.residentId = ''
+    grantForm.orderId = ''
     grantForm.pointAmount = 50
     grantForm.description = '消费赠送'
     await reloadAll()

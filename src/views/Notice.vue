@@ -7,6 +7,15 @@
         </div>
         <div class="actions">
           <button
+            v-if="editingId"
+            type="button"
+            class="btnSecondary"
+            :disabled="formSubmitting"
+            @click="resetForm"
+          >
+            取消编辑
+          </button>
+          <button
             type="button"
             class="btnSecondary"
             :disabled="formSubmitting"
@@ -68,6 +77,57 @@
           </div>
           <div class="form">
             <div class="field">
+              <label class="label">发布范围</label>
+              <div class="readonlyRow">
+                <span>物业公司</span>
+                <strong>{{ propertyCompanyLabel }}</strong>
+              </div>
+              <div class="readonlyRow">
+                <span>小区 ID</span>
+                <strong>{{ DEFAULT_COMMUNITY_ID }}</strong>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">目标群体</label>
+              <label class="checkbox inline">
+                <input v-model="selectAllTargetRoles" type="checkbox" @change="onSelectAllTargetRoles" />
+                <span class="checkmark"><IconSvg v-if="selectAllTargetRoles" name="check" /></span>
+                <span>全部角色</span>
+              </label>
+              <div class="checkboxGroup rolesGroup" :class="{ disabledGroup: selectAllTargetRoles }">
+                <label
+                  v-for="opt in ANNOUNCEMENT_TARGET_ROLE_OPTIONS"
+                  :key="opt.value"
+                  class="checkbox"
+                  :class="{ disabled: selectAllTargetRoles }"
+                >
+                  <input
+                    v-model="form.selectedTargetRoles"
+                    type="checkbox"
+                    :value="opt.value"
+                    :disabled="selectAllTargetRoles"
+                  />
+                  <span class="checkmark">
+                    <IconSvg v-if="form.selectedTargetRoles.includes(opt.value)" name="check" />
+                  </span>
+                  <span>{{ opt.label }}</span>
+                </label>
+              </div>
+            </div>
+            <div v-if="form.announcementType === ANNOUNCEMENT_TYPE.MERCHANT" class="field">
+              <label class="label">关联商家 ID</label>
+              <input v-model="form.merchantId" class="input" placeholder="merchant_xxx，商家公告时填写" />
+            </div>
+            <div class="field">
+              <label class="label">封面图片 URL</label>
+              <textarea
+                v-model="form.coverUrlsText"
+                class="contentInput"
+                rows="2"
+                placeholder="每行一个图片地址，可选"
+              />
+            </div>
+            <div class="field">
               <label class="label">覆盖楼栋</label>
               <div class="checkboxGroup">
                 <label class="checkbox">
@@ -102,12 +162,26 @@
                 <span>启用信息收集（如停水储水登记）</span>
               </label>
             </div>
+            <div v-if="form.collectEnabled" class="field">
+              <label class="label">收集字段</label>
+              <div v-for="(field, index) in form.collectFields" :key="index" class="collectFieldRow">
+                <input v-model="field.name" class="input sm" placeholder="字段 key" />
+                <input v-model="field.label" class="input" placeholder="显示名称" />
+                <select v-model="field.type" class="input sm">
+                  <option v-for="opt in ANNOUNCEMENT_COLLECT_FIELD_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
+                <button type="button" class="btnRemove" @click="removeCollectField(index)">删除</button>
+              </div>
+              <button type="button" class="btnAddField" @click="addCollectField">添加字段</button>
+            </div>
             <div class="infoBox">
               <IconSvg name="info" />
               <span>
-                当前将覆盖
-                <strong>{{ coverageText }}</strong>
-                。草稿可在下方列表继续编辑发布。
+                目标群体：<strong>{{ targetRolesText }}</strong>；
+                覆盖楼栋：<strong>{{ buildingsText }}</strong>。
+                草稿可在下方列表继续编辑发布。
               </span>
             </div>
           </div>
@@ -120,7 +194,19 @@
         <div class="head">
           <div class="header">
             <IconSvg name="history" class="icon" />
-            <span>已发布列表</span>
+            <span>历史通告</span>
+          </div>
+          <div class="listFilters">
+            <select v-model="listTypeFilter" class="filterSelect" @change="loadNotices(1)">
+              <option v-for="opt in ANNOUNCEMENT_LIST_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <select v-model="listStatusFilter" class="filterSelect">
+              <option v-for="opt in ANNOUNCEMENT_LIST_STATUS_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
           </div>
           <form class="search" @submit.prevent="submitSearch">
             <IconSvg name="search" />
@@ -137,17 +223,18 @@
             <tr>
               <th>发布时间</th>
               <th>标题</th>
-              <th>覆盖范围</th>
+              <th>目标群体</th>
+              <th>覆盖楼栋</th>
               <th>状态</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="5" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
+              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">加载中...</td>
             </tr>
             <tr v-else-if="!filteredNotices.length">
-              <td colspan="5" style="text-align:center;padding:24px;color:#8c8c9a">暂无通告</td>
+              <td colspan="6" style="text-align:center;padding:24px;color:#8c8c9a">暂无通告</td>
             </tr>
             <template v-else>
               <tr v-for="notice in filteredNotices" :key="notice.id">
@@ -155,6 +242,11 @@
                 <td>
                   <div class="cellTitle">{{ notice.title }}</div>
                   <div class="cellPublisher">{{ notice.announcementTypeLabel }} · 发布人：{{ notice.publisher }}</div>
+                </td>
+                <td>
+                  <div class="scope">
+                    <span class="tag role">{{ notice.targetRolesLabel }}</span>
+                  </div>
                 </td>
                 <td>
                   <div class="scope">
@@ -218,6 +310,22 @@
                 <span class="detailLabel">正文内容</span>
                 <p class="detailValue content">{{ detailData.content }}</p>
               </div>
+              <div v-if="detailData?.collectFields?.length" class="detailContent">
+                <span class="detailLabel">收集字段</span>
+                <ul class="collectFieldList">
+                  <li v-for="field in detailData.collectFields" :key="field.name">
+                    {{ field.label || field.name }}（{{ field.type }}）
+                  </li>
+                </ul>
+              </div>
+              <div v-if="detailData?.coverUrls?.length" class="detailContent">
+                <span class="detailLabel">封面图片</span>
+                <div class="coverList">
+                  <a v-for="(url, idx) in detailData.coverUrls" :key="idx" :href="url" target="_blank" rel="noopener">
+                    {{ url }}
+                  </a>
+                </div>
+              </div>
             </div>
             <p v-if="detailError" class="error">{{ detailError }}</p>
             <div class="modalFooter">
@@ -264,19 +372,31 @@ import IconSvg from '../components/IconSvg.vue'
 import { announcementApi, residentApi } from '../api/services'
 import { mapAnnouncements } from '../api/mappers'
 import { ApiError } from '../api/request'
-import type { AnnouncementCreatePayload, AnnouncementItem, AnnouncementUpdatePayload, ResidentItem } from '../api/types'
+import type { AnnouncementCollectField, AnnouncementCreatePayload, AnnouncementItem, AnnouncementUpdatePayload, ResidentItem } from '../api/types'
 import { useAuthStore } from '../stores/auth'
 import {
+  ANNOUNCEMENT_COLLECT_FIELD_TYPE_OPTIONS,
+  ANNOUNCEMENT_LIST_STATUS_OPTIONS,
+  ANNOUNCEMENT_LIST_TYPE_OPTIONS,
   ANNOUNCEMENT_STATUS,
   ANNOUNCEMENT_STATUS_LABEL,
+  ANNOUNCEMENT_TARGET_ROLE_OPTIONS,
   ANNOUNCEMENT_TYPE,
   ANNOUNCEMENT_TYPE_LABEL,
   ANNOUNCEMENT_TYPE_OPTIONS,
-  getEnumLabel
+  formatAnnouncementTargetRoles,
+  getEnumLabel,
+  normalizeAnnouncementType,
+  ROLE_LABEL,
+  USER_ROLE
 } from '../constants/enums'
 
 const PAGE_SIZE = 20
 const DEFAULT_COMMUNITY_ID = import.meta.env.VITE_COMMUNITY_ID || 'com_demo001'
+const DEFAULT_COLLECT_FIELDS: AnnouncementCollectField[] = [
+  { name: 'needWater', label: '是否需要储水', type: 'boolean' },
+  { name: 'contactPhone', label: '联系电话', type: 'text' }
+]
 
 const authStore = useAuthStore()
 
@@ -291,16 +411,27 @@ const form = ref<{
   content: string
   announcementType: string
   selectedBuildings: string[]
+  selectedTargetRoles: string[]
+  merchantId: string
   collectEnabled: boolean
+  collectFields: AnnouncementCollectField[]
+  coverUrlsText: string
 }>({
   title: '',
   content: '',
   announcementType: ANNOUNCEMENT_TYPE.PROPERTY,
   selectedBuildings: [] as string[],
-  collectEnabled: false
+  selectedTargetRoles: [USER_ROLE.RESIDENT],
+  merchantId: '',
+  collectEnabled: false,
+  collectFields: [] as AnnouncementCollectField[],
+  coverUrlsText: ''
 })
 const selectAllBuildings = ref(true)
+const selectAllTargetRoles = ref(false)
 const buildingOptions = ref<string[]>([])
+const listTypeFilter = ref('')
+const listStatusFilter = ref('')
 
 const notices = ref<ReturnType<typeof mapAnnouncements>>([])
 const noticesTotal = ref(0)
@@ -310,9 +441,13 @@ const searchKeyword = ref('')
 let searchTimer: ReturnType<typeof setTimeout>
 
 const filteredNotices = computed(() => {
+  let list = notices.value
+  if (listStatusFilter.value) {
+    list = list.filter((item) => item.status === listStatusFilter.value)
+  }
   const q = searchKeyword.value.trim().toLowerCase()
-  if (!q) return notices.value
-  return notices.value.filter(item => item.title.toLowerCase().includes(q))
+  if (!q) return list
+  return list.filter((item) => item.title.toLowerCase().includes(q))
 })
 
 const detailModalOpen = ref(false)
@@ -326,7 +461,14 @@ const deleteTargetTitle = ref('')
 const deleteSubmitting = ref(false)
 const deleteError = ref('')
 
-const coverageText = computed(() => {
+const propertyCompanyLabel = computed(() => authStore.propertyCompanyId || '—')
+
+const targetRolesText = computed(() => {
+  if (selectAllTargetRoles.value || !form.value.selectedTargetRoles.length) return '全部角色'
+  return form.value.selectedTargetRoles.map((role) => getEnumLabel(ROLE_LABEL, role, role)).join('、')
+})
+
+const buildingsText = computed(() => {
   if (selectAllBuildings.value || !form.value.selectedBuildings.length) return '全部楼栋'
   return form.value.selectedBuildings.join('、')
 })
@@ -343,9 +485,13 @@ const detailRows = computed(() => {
   if (!d) return []
   return [
     { label: '标题', value: d.title || '—' },
-    { label: '公告类型', value: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, d.announcementType) },
+    { label: '公告类型', value: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, normalizeAnnouncementType(d.announcementType)) },
+    { label: '物业公司', value: d.propertyCompanyId || '—' },
+    { label: '小区 ID', value: d.communityId || '—' },
     { label: '状态', value: getEnumLabel(ANNOUNCEMENT_STATUS_LABEL, d.status) },
     { label: '覆盖楼栋', value: d.targetBuildings?.length ? d.targetBuildings.join('、') : '全部楼栋' },
+    { label: '目标群体', value: formatAnnouncementTargetRoles(d.targetRoles) },
+    { label: '关联商家', value: d.merchantId || '—' },
     { label: '信息收集', value: d.collectEnabled ? '已启用' : '未启用' },
     { label: '发布时间', value: d.publishedAt || '—' },
     { label: '创建时间', value: d.createdAt || '—' },
@@ -371,10 +517,33 @@ function onSelectAllBuildings() {
   }
 }
 
+function onSelectAllTargetRoles() {
+  if (selectAllTargetRoles.value) {
+    form.value.selectedTargetRoles = []
+  }
+}
+
+watch(
+  () => form.value.collectEnabled,
+  (enabled) => {
+    if (enabled && !form.value.collectFields.length) {
+      form.value.collectFields = DEFAULT_COLLECT_FIELDS.map((field) => ({ ...field }))
+    }
+  }
+)
+
 watch(
   () => form.value.selectedBuildings,
   (buildings) => {
     if (buildings.length > 0) selectAllBuildings.value = false
+  },
+  { deep: true }
+)
+
+watch(
+  () => form.value.selectedTargetRoles,
+  (roles) => {
+    if (roles.length > 0) selectAllTargetRoles.value = false
   },
   { deep: true }
 )
@@ -400,6 +569,30 @@ async function loadBuildingOptions() {
   }
 }
 
+function parseCoverUrls(text: string) {
+  return text
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function buildCollectFields() {
+  if (!form.value.collectEnabled) return undefined
+  const fields = form.value.collectFields
+    .map((field, index) => ({
+      name: field.name.trim() || `field_${index + 1}`,
+      label: field.label.trim() || field.name.trim() || `字段${index + 1}`,
+      type: field.type || 'text'
+    }))
+    .filter((field) => field.label)
+  return fields.length ? fields : undefined
+}
+
+function buildTargetRoles() {
+  if (selectAllTargetRoles.value || !form.value.selectedTargetRoles.length) return undefined
+  return [...form.value.selectedTargetRoles]
+}
+
 function buildTargetBuildings() {
   if (selectAllBuildings.value || !form.value.selectedBuildings.length) return undefined
   return [...form.value.selectedBuildings]
@@ -415,8 +608,17 @@ function buildCreatePayload(status: string): AnnouncementCreatePayload {
   }
   const buildings = buildTargetBuildings()
   if (buildings?.length) payload.targetBuildings = buildings
+  const targetRoles = buildTargetRoles()
+  if (targetRoles?.length) payload.targetRoles = targetRoles
+  const coverUrls = parseCoverUrls(form.value.coverUrlsText)
+  if (coverUrls.length) payload.coverUrls = coverUrls
+  const collectFields = buildCollectFields()
+  if (collectFields?.length) payload.collectFields = collectFields
   if (authStore.propertyCompanyId) payload.propertyCompanyId = authStore.propertyCompanyId
   payload.communityId = DEFAULT_COMMUNITY_ID
+  if (form.value.announcementType === ANNOUNCEMENT_TYPE.MERCHANT && form.value.merchantId.trim()) {
+    payload.merchantId = form.value.merchantId.trim()
+  }
   return payload
 }
 
@@ -430,6 +632,11 @@ function buildUpdatePayload(status: string): AnnouncementUpdatePayload {
   }
   const buildings = buildTargetBuildings()
   payload.targetBuildings = buildings ?? []
+  payload.targetRoles = buildTargetRoles() ?? []
+  const coverUrls = parseCoverUrls(form.value.coverUrlsText)
+  payload.coverUrls = coverUrls
+  const collectFields = buildCollectFields()
+  payload.collectFields = collectFields ?? []
   return payload
 }
 
@@ -440,19 +647,49 @@ function resetForm() {
     content: '',
     announcementType: ANNOUNCEMENT_TYPE.PROPERTY,
     selectedBuildings: [],
-    collectEnabled: false
+    selectedTargetRoles: [USER_ROLE.RESIDENT],
+    merchantId: '',
+    collectEnabled: false,
+    collectFields: [],
+    coverUrlsText: ''
   }
   selectAllBuildings.value = true
+  selectAllTargetRoles.value = false
   formError.value = ''
+  formSuccess.value = ''
+}
+
+function addCollectField() {
+  form.value.collectFields.push({
+    name: `field_${form.value.collectFields.length + 1}`,
+    label: '',
+    type: 'text'
+  })
+}
+
+function removeCollectField(index: number) {
+  form.value.collectFields.splice(index, 1)
 }
 
 function applyDetailToForm(data: AnnouncementItem) {
   editingId.value = data.id
   form.value.title = data.title || ''
   form.value.content = data.content || ''
-  form.value.announcementType = data.announcementType || ANNOUNCEMENT_TYPE.PROPERTY
+  form.value.announcementType = normalizeAnnouncementType(data.announcementType)
   form.value.selectedBuildings = data.targetBuildings ? [...data.targetBuildings] : []
+  if (data.targetRoles?.length) {
+    form.value.selectedTargetRoles = [...data.targetRoles]
+    selectAllTargetRoles.value = false
+  } else {
+    form.value.selectedTargetRoles = []
+    selectAllTargetRoles.value = true
+  }
+  form.value.merchantId = data.merchantId || ''
   form.value.collectEnabled = !!data.collectEnabled
+  form.value.collectFields = data.collectFields?.length
+    ? data.collectFields.map((field) => ({ ...field }))
+    : []
+  form.value.coverUrlsText = data.coverUrls?.join('\n') || ''
   selectAllBuildings.value = !data.targetBuildings?.length
   formError.value = ''
   formSuccess.value = ''
@@ -465,6 +702,8 @@ async function loadNotices(page = currentPage.value) {
     const res = await announcementApi.list({
       page,
       pageSize: PAGE_SIZE,
+      announcementType: listTypeFilter.value || undefined,
+      communityId: DEFAULT_COMMUNITY_ID,
       sort: '-publishedAt'
     })
     notices.value = mapAnnouncements(res.list || [])
@@ -491,6 +730,19 @@ async function submitForm(status: string) {
   }
   if (!content) {
     formError.value = '请填写通告内容'
+    formSuccess.value = ''
+    return
+  }
+  if (
+    form.value.announcementType === ANNOUNCEMENT_TYPE.MERCHANT &&
+    !form.value.merchantId.trim()
+  ) {
+    formError.value = '商家公告请填写关联商家 ID'
+    formSuccess.value = ''
+    return
+  }
+  if (!selectAllTargetRoles.value && !form.value.selectedTargetRoles.length) {
+    formError.value = '请选择目标群体，或勾选全部角色'
     formSuccess.value = ''
     return
   }
@@ -642,6 +894,15 @@ onMounted(async () => {
 
 .history { background: #ffffff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .history .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+.listFilters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filterSelect { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; font-size: 13px; color: #1f1f2e; }
+.collectFieldRow { display: grid; grid-template-columns: 1fr 1.2fr 100px auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+.collectFieldRow .input.sm { min-width: 0; }
+.btnRemove { padding: 8px 10px; border: 1px solid #ffa39e; background: #fff1f0; color: #cf1322; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.btnAddField { padding: 8px 12px; border: 1px dashed #d0d0d8; background: #fafafc; color: #5c5c66; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.collectFieldList { margin: 0; padding-left: 18px; color: #1f1f2e; font-size: 14px; line-height: 1.8; }
+.coverList { display: flex; flex-direction: column; gap: 6px; }
+.coverList a { font-size: 13px; color: #5c5c9e; word-break: break-all; }
 .history .header { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: #5c5c9e; margin-bottom: 0; }
 .history .icon { width: 20px; height: 20px; }
 .history .search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fafafc; min-width: 220px; }
@@ -655,6 +916,11 @@ onMounted(async () => {
 .history .cellPublisher { font-size: 12px; color: #8c8c9a; }
 .history .scope { display: flex; flex-wrap: wrap; gap: 6px; }
 .history .tag { display: inline-block; padding: 3px 8px; border-radius: 10px; background: #e8f8f0; color: #3aaf7d; font-size: 12px; }
+.history .tag.role { background: #eef0ff; color: #5c5c9e; }
+.readonlyRow { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 13px; border-bottom: 1px solid #f0f0f3; }
+.readonlyRow span { color: #8c8c9a; }
+.readonlyRow strong { color: #1f1f2e; font-weight: 500; }
+.rolesGroup.disabledGroup { opacity: 0.55; }
 .history .status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
 .history .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
 .history .status.published { color: #3aaf7d; }

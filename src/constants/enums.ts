@@ -47,21 +47,60 @@ export const MERCHANT_STATUS_LABEL: Record<string, string> = {
 }
 
 export const ANNOUNCEMENT_TYPE = {
-  PROPERTY: 'property_announcement',
-  COMMUNITY: 'community_announcement',
-  PLATFORM: 'platform_announcement',
-  SYSTEM: 'system_announcement',
-  MERCHANT: 'merchant_announcement',
-  ACTIVITY: 'activity_announcement'
+  PROPERTY: 'property',
+  COMMUNITY: 'community',
+  PLATFORM: 'platform',
+  SYSTEM: 'system',
+  MERCHANT: 'merchant',
+  ACTIVITY: 'activity'
 } as const
 
 export const ANNOUNCEMENT_TYPE_LABEL: Record<string, string> = {
+  [ANNOUNCEMENT_TYPE.PROPERTY]: '物业公告',
+  [ANNOUNCEMENT_TYPE.COMMUNITY]: '社区公告',
+  [ANNOUNCEMENT_TYPE.PLATFORM]: '平台公告',
+  [ANNOUNCEMENT_TYPE.SYSTEM]: '系统公告',
+  [ANNOUNCEMENT_TYPE.MERCHANT]: '商家公告',
+  [ANNOUNCEMENT_TYPE.ACTIVITY]: '活动组公告',
   property_announcement: '物业公告',
   community_announcement: '社区公告',
-  platform_announcement: '统筹公告',
+  platform_announcement: '平台公告',
   system_announcement: '系统公告',
   merchant_announcement: '商家公告',
-  activity_announcement: '活动组公告'
+  activity_announcement: '活动组公告',
+  物业公告: '物业公告',
+  社区公告: '社区公告',
+  平台公告: '平台公告',
+  统筹公告: '平台公告',
+  统筹: '平台公告',
+  系统公告: '系统公告',
+  商家公告: '商家公告',
+  活动组公告: '活动组公告'
+}
+
+const ANNOUNCEMENT_TYPE_ALIASES: Record<string, string> = {
+  property_announcement: ANNOUNCEMENT_TYPE.PROPERTY,
+  community_announcement: ANNOUNCEMENT_TYPE.COMMUNITY,
+  platform_announcement: ANNOUNCEMENT_TYPE.PLATFORM,
+  system_announcement: ANNOUNCEMENT_TYPE.SYSTEM,
+  merchant_announcement: ANNOUNCEMENT_TYPE.MERCHANT,
+  activity_announcement: ANNOUNCEMENT_TYPE.ACTIVITY,
+  物业公告: ANNOUNCEMENT_TYPE.PROPERTY,
+  社区公告: ANNOUNCEMENT_TYPE.COMMUNITY,
+  平台公告: ANNOUNCEMENT_TYPE.PLATFORM,
+  统筹公告: ANNOUNCEMENT_TYPE.PLATFORM,
+  统筹: ANNOUNCEMENT_TYPE.PLATFORM,
+  系统公告: ANNOUNCEMENT_TYPE.SYSTEM,
+  商家公告: ANNOUNCEMENT_TYPE.MERCHANT,
+  活动组公告: ANNOUNCEMENT_TYPE.ACTIVITY
+}
+
+export function normalizeAnnouncementType(value?: string) {
+  if (!value) return ANNOUNCEMENT_TYPE.PROPERTY
+  if (Object.values(ANNOUNCEMENT_TYPE).includes(value as (typeof ANNOUNCEMENT_TYPE)[keyof typeof ANNOUNCEMENT_TYPE])) {
+    return value
+  }
+  return ANNOUNCEMENT_TYPE_ALIASES[value] || value
 }
 
 export const ANNOUNCEMENT_STATUS = {
@@ -444,15 +483,54 @@ export const MERCHANT_LEVEL_OPTIONS = Object.entries(MERCHANT_LEVEL_LABEL).map((
   label
 }))
 
-export const ANNOUNCEMENT_TYPE_OPTIONS = Object.entries(ANNOUNCEMENT_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label
-}))
+export const ANNOUNCEMENT_TYPE_OPTIONS = [
+  { value: ANNOUNCEMENT_TYPE.PROPERTY, label: '物业公告' },
+  { value: ANNOUNCEMENT_TYPE.COMMUNITY, label: '社区公告' },
+  { value: ANNOUNCEMENT_TYPE.PLATFORM, label: '平台公告' },
+  { value: ANNOUNCEMENT_TYPE.SYSTEM, label: '系统公告' },
+  { value: ANNOUNCEMENT_TYPE.MERCHANT, label: '商家公告' },
+  { value: ANNOUNCEMENT_TYPE.ACTIVITY, label: '活动组公告' }
+]
 
 export const ANNOUNCEMENT_STATUS_OPTIONS = [
   { value: ANNOUNCEMENT_STATUS.PUBLISHED, label: '立即发布' },
   { value: ANNOUNCEMENT_STATUS.DRAFT, label: '存为草稿' }
 ]
+
+export const ANNOUNCEMENT_LIST_STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: ANNOUNCEMENT_STATUS.DRAFT, label: '草稿' },
+  { value: ANNOUNCEMENT_STATUS.PUBLISHED, label: '已发布' },
+  { value: ANNOUNCEMENT_STATUS.ARCHIVED, label: '已归档' }
+]
+
+export const ANNOUNCEMENT_LIST_TYPE_OPTIONS = [
+  { value: '', label: '全部类型' },
+  ...ANNOUNCEMENT_TYPE_OPTIONS
+]
+
+export const ANNOUNCEMENT_COLLECT_FIELD_TYPE_OPTIONS = [
+  { value: 'boolean', label: '是/否' },
+  { value: 'text', label: '文本' },
+  { value: 'number', label: '数字' }
+]
+
+/** 公告推送目标角色（targetRoles） */
+export const ANNOUNCEMENT_TARGET_ROLE_OPTIONS = [
+  { value: USER_ROLE.RESIDENT, label: ROLE_LABEL[USER_ROLE.RESIDENT] },
+  { value: USER_ROLE.MERCHANT, label: ROLE_LABEL[USER_ROLE.MERCHANT] },
+  { value: USER_ROLE.COURIER, label: ROLE_LABEL[USER_ROLE.COURIER] },
+  { value: USER_ROLE.COORDINATOR, label: ROLE_LABEL[USER_ROLE.COORDINATOR] },
+  { value: USER_ROLE.SECTOR_LEADER, label: ROLE_LABEL[USER_ROLE.SECTOR_LEADER] },
+  { value: USER_ROLE.INDIVIDUAL_LEADER, label: ROLE_LABEL[USER_ROLE.INDIVIDUAL_LEADER] },
+  { value: USER_ROLE.ACTIVITY_LEADER, label: ROLE_LABEL[USER_ROLE.ACTIVITY_LEADER] },
+  { value: USER_ROLE.TECHNICIAN, label: ROLE_LABEL[USER_ROLE.TECHNICIAN] }
+]
+
+export function formatAnnouncementTargetRoles(roles?: string[]) {
+  if (!roles?.length) return '全部角色'
+  return roles.map((role) => getEnumLabel(ROLE_LABEL, role, role)).join('、')
+}
 
 export const COIN_ISSUE_MODE = {
   AUTO: 'auto',

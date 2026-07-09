@@ -18,7 +18,7 @@ import type {
   ResidentItem,
   RolePresetDto
 } from './types'
-import { getEnumLabel, ANNOUNCEMENT_STATUS, ANNOUNCEMENT_STATUS_LABEL, ANNOUNCEMENT_TYPE_LABEL, COURIER_STATUS, COURIER_STATUS_LABEL, DELIVERY_STATUS, DELIVERY_STATUS_LABEL, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, MERCHANT_STATUS_LABEL, PERMISSION_MODULE_LABEL, RESIDENT_STATUS, RESIDENT_STATUS_LABEL, RESIDENT_USER_TYPE, ROLE_LABEL } from '../constants/enums'
+import { getEnumLabel, ANNOUNCEMENT_STATUS, ANNOUNCEMENT_STATUS_LABEL, ANNOUNCEMENT_TYPE_LABEL, COURIER_STATUS, COURIER_STATUS_LABEL, DELIVERY_STATUS, DELIVERY_STATUS_LABEL, MERCHANT_AUDIT_STATUS_LABEL, MERCHANT_LEVEL_LABEL, MERCHANT_STATUS_LABEL, PERMISSION_MODULE_LABEL, RESIDENT_STATUS, RESIDENT_STATUS_LABEL, RESIDENT_USER_TYPE, ROLE_LABEL, normalizeAnnouncementType, formatAnnouncementTargetRoles } from '../constants/enums'
 
 const avatarColors = ['#5c5c9e', '#3aaf7d', '#f5a623', '#e05c5c', '#6a6aae']
 
@@ -404,10 +404,12 @@ export function mapAnnouncements(list: AnnouncementItem[]) {
     title: item.title,
     publisher: item.publisherName || item.publisher || '物业管理处',
     scope: item.targetBuildings?.length ? item.targetBuildings : ['全部楼栋'],
+    targetRoles: item.targetRoles,
+    targetRolesLabel: formatAnnouncementTargetRoles(item.targetRoles),
     status: item.status || ANNOUNCEMENT_STATUS.DRAFT,
     statusLabel: getEnumLabel(ANNOUNCEMENT_STATUS_LABEL, item.status, '—'),
     announcementType: item.announcementType,
-    announcementTypeLabel: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, item.announcementType, '—')
+    announcementTypeLabel: getEnumLabel(ANNOUNCEMENT_TYPE_LABEL, normalizeAnnouncementType(item.announcementType), '—')
   }))
 }
 
