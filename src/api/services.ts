@@ -66,6 +66,7 @@ import type {
   ProductUpdatePayload,
   SectorLeaderDetail,
   SectorLeaderCreatePayload,
+  SectorLeaderRemoveResult,
   SectorLeaderUpdatePayload,
   CoordinatorDetail,
   ActivityGroupItem,
@@ -763,12 +764,8 @@ export const sectorLeaderPortalApi = {
   }
 }
 
-export const coordinatorPortalApi = {
-  my() {
-    return request<CoordinatorDetail>('/coordinators/my')
-  },
-
-  sectorLeaders(params: {
+export const sectorLeaderAdminApi = {
+  list(params: {
     page?: number
     pageSize?: number
     keyword?: string
@@ -778,25 +775,40 @@ export const coordinatorPortalApi = {
     return request<PageResult<SectorLeaderDetail>>(`/admin/sector-leaders${buildQuery(params)}`)
   },
 
-  createSectorLeader(payload: SectorLeaderCreatePayload) {
+  get(id: string) {
+    return request<SectorLeaderDetail>(`/admin/sector-leaders/${id}`)
+  },
+
+  create(payload: SectorLeaderCreatePayload) {
     return request<SectorLeaderDetail>('/admin/sector-leaders', {
       method: 'POST',
       body: JSON.stringify(payload)
     })
   },
 
-  updateSectorLeader(id: string, payload: SectorLeaderUpdatePayload) {
+  update(id: string, payload: SectorLeaderUpdatePayload) {
     return request<SectorLeaderDetail>(`/admin/sector-leaders/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload)
     })
   },
 
-  removeSectorLeader(id: string) {
-    return request<{ id: string; status?: string }>(`/admin/sector-leaders/${id}`, {
+  remove(id: string) {
+    return request<SectorLeaderRemoveResult>(`/admin/sector-leaders/${id}`, {
       method: 'DELETE'
     })
   }
+}
+
+export const coordinatorPortalApi = {
+  my() {
+    return request<CoordinatorDetail>('/coordinators/my')
+  },
+
+  sectorLeaders: sectorLeaderAdminApi.list.bind(sectorLeaderAdminApi),
+  createSectorLeader: sectorLeaderAdminApi.create.bind(sectorLeaderAdminApi),
+  updateSectorLeader: sectorLeaderAdminApi.update.bind(sectorLeaderAdminApi),
+  removeSectorLeader: sectorLeaderAdminApi.remove.bind(sectorLeaderAdminApi)
 }
 
 export const activityGroupApi = {
@@ -839,10 +851,8 @@ export const specialOfferApi = {
   list(params: {
     page?: number
     pageSize?: number
-    merchantId?: string
+    targetType?: string
     status?: string
-    keyword?: string
-    sort?: string
   } = {}) {
     return request<PageResult<SpecialOfferItem>>(`/special-offers${buildQuery(params)}`)
   },

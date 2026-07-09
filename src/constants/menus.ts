@@ -9,6 +9,7 @@ export const adminMenus: Menu[] = [
   { name: '住户管理', icon: 'resident', route: 'resident' },
   { name: '商家管理', icon: 'merchant', route: 'merchant' },
   { name: '权限配置', icon: 'permission', route: 'permission' },
+  { name: '板块负责人', icon: 'people', route: 'sector-leaders' },
   { name: '参数配置', icon: 'param', route: 'param' },
   { name: '积分管理', icon: 'points', route: 'points' },
   { name: '通告发布', icon: 'notice', route: 'notice' },

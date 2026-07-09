@@ -10,6 +10,9 @@
 
     <div class="toolbar">
       <input v-model="keyword" class="input" placeholder="搜索姓名/手机号" @keyup.enter="reload" />
+      <select v-model="statusFilter" class="input" @change="reload">
+        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
       <button class="btnPrimary" :disabled="loading" @click="reload">搜索</button>
     </div>
 
@@ -21,7 +24,6 @@
           <tr>
             <th>负责人</th>
             <th>板块</th>
-            <th>商家数</th>
             <th>个体负责人</th>
             <th>状态</th>
             <th>操作</th>
@@ -34,12 +36,14 @@
               <div class="sub">{{ item.residentPhone || '' }}</div>
             </td>
             <td>{{ item.sectorName || getEnumLabel(SECTOR_TYPE_LABEL, item.sector) }}</td>
-            <td>{{ item.merchantCount ?? '—' }}</td>
             <td>{{ item.individualLeaderCount ?? '—' }}</td>
-            <td>{{ item.status === ENTITY_STATUS.ACTIVE ? '启用' : item.status || '—' }}</td>
+            <td>
+              <span class="statusTag" :class="item.status">{{ statusLabel(item.status) }}</span>
+            </td>
             <td class="actions">
               <button class="btnGhostSm" @click="openEdit(item)">编辑</button>
               <button
+                v-if="item.status === ENTITY_STATUS.ACTIVE"
                 class="btnDangerSm"
                 :disabled="removingId === item.id"
                 @click="removeLeader(item)"
@@ -69,11 +73,11 @@
           <div class="modalBody">
             <p v-if="formError" class="error">{{ formError }}</p>
             <div v-if="!editingId" class="field">
-              <label class="label">住户 ID（residentId）</label>
+              <label class="label">住户 ID（residentId）<em>*</em></label>
               <input v-model="form.residentId" class="input" placeholder="关联住户的用户 ID" />
             </div>
             <div class="field">
-              <label class="label">负责板块</label>
+              <label class="label">负责板块<em>*</em></label>
               <select v-model="form.sector" class="input">
                 <option v-for="opt in sectorOptions" :key="opt.value" :value="opt.value">
                   {{ opt.label }}
@@ -82,7 +86,13 @@
             </div>
             <div class="field">
               <label class="label">工作说明</label>
-              <textarea v-model="form.description" class="textarea" rows="3" />
+              <textarea
+                v-model="form.description"
+                class="textarea"
+                rows="3"
+                maxlength="200"
+                placeholder="最多 200 字"
+              />
             </div>
             <div v-if="editingId" class="field">
               <label class="label">状态</label>
@@ -106,10 +116,17 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { coordinatorPortalApi } from '../../api/services'
+import { coordinatorPortalApi, sectorLeaderAdminApi } from '../../api/services'
 import type { SectorLeaderDetail } from '../../api/types'
 import { ApiError } from '../../api/request'
-import { ENTITY_STATUS, getEnumLabel, SECTOR_TYPE, SECTOR_TYPE_LABEL } from '../../constants/enums'
+import {
+  ENTITY_STATUS,
+  ENTITY_STATUS_OPTIONS,
+  getEnumLabel,
+  SECTOR_TYPE,
+  SECTOR_TYPE_LABEL,
+  SECTOR_TYPE_OPTIONS
+} from '../../constants/enums'
 import { useCoordinatorPortalStore } from '../../stores/coordinatorPortal'
 
 const portal = useCoordinatorPortalStore()
@@ -117,6 +134,7 @@ const leaders = ref<SectorLeaderDetail[]>([])
 const loading = ref(false)
 const error = ref('')
 const keyword = ref('')
+const statusFilter = ref('')
 const page = ref(1)
 const totalPages = ref(1)
 const modalOpen = ref(false)
@@ -125,7 +143,8 @@ const submitting = ref(false)
 const formError = ref('')
 const removingId = ref('')
 
-const sectorOptions = Object.entries(SECTOR_TYPE_LABEL).map(([value, label]) => ({ value, label }))
+const statusOptions = ENTITY_STATUS_OPTIONS
+const sectorOptions = SECTOR_TYPE_OPTIONS
 
 const form = reactive({
   residentId: '',
@@ -136,6 +155,14 @@ const form = reactive({
 
 const coordinatorId = computed(() => portal.detail?.id || '')
 
+function statusLabel(status?: string) {
+  return status === ENTITY_STATUS.ACTIVE
+    ? '启用'
+    : status === ENTITY_STATUS.INACTIVE
+      ? '停用'
+      : status || '—'
+}
+
 async function ensurePortal() {
   if (!portal.detail) await portal.loadMy()
 }
@@ -145,10 +172,11 @@ async function load(pageNo = 1) {
   error.value = ''
   try {
     await ensurePortal()
-    const res = await coordinatorPortalApi.sectorLeaders({
+    const res = await sectorLeaderAdminApi.list({
       page: pageNo,
       pageSize: 20,
       keyword: keyword.value.trim() || undefined,
+      status: statusFilter.value || undefined,
       sort: '-createdAt'
     })
     leaders.value = res.list || []
@@ -191,6 +219,7 @@ function openEdit(item: SectorLeaderDetail) {
 
 function closeModal() {
   modalOpen.value = false
+  submitting.value = false
 }
 
 async function submit() {
@@ -250,13 +279,16 @@ onMounted(() => load(1))
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
 .toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; min-width: 220px; }
+.input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; min-width: 180px; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
 .panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f3; text-align: left; }
 .table th { color: #8c8c9a; font-weight: 500; }
 .sub { font-size: 12px; color: #8c8c9a; margin-top: 2px; }
+.statusTag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.statusTag.active { background: #e6f7ef; color: #389e6d; }
+.statusTag.inactive { background: #f5f5f5; color: #8c8c9a; }
 .actions { display: flex; gap: 8px; }
 .btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 13px; }
 .btnDangerSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #ffa39e; background: #fff1f0; color: #cf1322; cursor: pointer; font-size: 13px; }
@@ -273,5 +305,6 @@ onMounted(() => load(1))
 .modalFooter { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid #f0f0f3; }
 .field { margin-bottom: 14px; }
 .label { display: block; font-size: 13px; color: #8c8c9a; margin-bottom: 6px; }
+.label em { color: #e05c5c; font-style: normal; }
 .textarea { width: 100%; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; resize: vertical; box-sizing: border-box; }
 </style>

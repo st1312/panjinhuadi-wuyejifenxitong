@@ -3,7 +3,7 @@
     <div class="header">
       <div>
         <h1 class="title">工作台</h1>
-        <p class="desc">统筹负责人工作概览 · 官方推荐模块</p>
+        <p class="desc">统筹负责人工作概览</p>
       </div>
     </div>
 
@@ -16,17 +16,17 @@
           <div class="label">负责人</div>
           <div class="value small">{{ displayName }}</div>
         </div>
-        <div class="statCard">
-          <div class="label">官方认证商家</div>
-          <div class="value">{{ officialMerchantCount }}</div>
-        </div>
         <div class="statCard green">
-          <div class="label">板块负责人</div>
-          <div class="value">{{ sectorCount }}</div>
+          <div class="label">板块商家</div>
+          <div class="value">{{ merchantCount }}</div>
         </div>
         <div class="statCard">
-          <div class="label">待审核入驻</div>
-          <div class="value">{{ pendingAuditCount }}</div>
+          <div class="label">板块负责人</div>
+          <div class="value">{{ sectorLeaderCount }}</div>
+        </div>
+        <div class="statCard">
+          <div class="label">进行中特惠</div>
+          <div class="value">{{ activeOfferCount }}</div>
         </div>
       </div>
 
@@ -35,16 +35,12 @@
           <h3 class="cardTitle">统筹信息</h3>
           <ul class="infoList">
             <li><span>所属物业</span><strong>{{ propertyName }}</strong></li>
-            <li><span>板块数量</span><strong>{{ sectorCount }} 个</strong></li>
+            <li><span>联系电话</span><strong>{{ phone || '—' }}</strong></li>
             <li><span>个体负责人</span><strong>{{ individualLeaderCount }} 人</strong></li>
-            <li><span>工作说明</span><strong>{{ description }}</strong></li>
+            <li><span>分成比例</span><strong>{{ commissionRateLabel }}</strong></li>
+            <li><span>累计收益</span><strong>¥{{ formatMoney(totalEarnings) }}</strong></li>
+            <li><span>状态</span><strong>{{ statusLabel }}</strong></li>
           </ul>
-          <div v-if="distributionSummary" class="subStats">
-            <div class="subStat">
-              <span>本月统筹分成</span>
-              <strong>¥{{ formatMoney(distributionSummary.coordinatorAmount) }}</strong>
-            </div>
-          </div>
         </div>
         <div class="card">
           <h3 class="cardTitle">快捷入口</h3>
@@ -68,27 +64,38 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { distributionApi, merchantApi } from '../../api/services'
-import { ApiError } from '../../api/request'
-import { MERCHANT_LEVEL } from '../../constants/enums'
 import { useAuthStore } from '../../stores/auth'
 import { useCoordinatorPortalStore } from '../../stores/coordinatorPortal'
+import { ENTITY_STATUS } from '../../constants/enums'
 
 const auth = useAuthStore()
 const portal = useCoordinatorPortalStore()
 const loading = ref(false)
-const officialMerchantCount = ref(0)
-const pendingAuditCount = ref(0)
-const distributionSummary = ref<{ coordinatorAmount?: number } | null>(null)
 
 const detail = computed(() => portal.detail)
 const displayName = computed(
   () => detail.value?.residentName || auth.username || '—'
 )
 const propertyName = computed(() => detail.value?.propertyCompanyName || '—')
-const sectorCount = computed(() => detail.value?.sectorCount ?? 0)
+const phone = computed(() => detail.value?.phone || detail.value?.residentPhone || '')
+const merchantCount = computed(() => detail.value?.merchantCount ?? 0)
+const sectorLeaderCount = computed(
+  () => detail.value?.sectorLeaderCount ?? detail.value?.sectorCount ?? 0
+)
 const individualLeaderCount = computed(() => detail.value?.individualLeaderCount ?? 0)
-const description = computed(() => detail.value?.description || '—')
+const activeOfferCount = computed(() => detail.value?.activeSpecialOfferCount ?? 0)
+const totalEarnings = computed(() => detail.value?.totalEarnings)
+const commissionRateLabel = computed(() => {
+  const rate = detail.value?.commissionRate
+  if (rate === undefined || rate === null) return '—'
+  return rate <= 1 ? `${(rate * 100).toFixed(0)}%` : `${rate}%`
+})
+const statusLabel = computed(() => {
+  const status = detail.value?.status
+  if (status === ENTITY_STATUS.ACTIVE) return '启用'
+  if (status === ENTITY_STATUS.INACTIVE) return '停用'
+  return status || '—'
+})
 
 function formatMoney(value?: number) {
   if (value === undefined || value === null) return '0.00'
@@ -98,22 +105,7 @@ function formatMoney(value?: number) {
 async function loadStats() {
   loading.value = true
   try {
-    await portal.loadMy()
-    const now = new Date()
-    const end = now.toISOString().slice(0, 10)
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-    const [officialRes, pendingRes, statsRes] = await Promise.all([
-      merchantApi.list({ page: 1, pageSize: 1, merchantLevel: MERCHANT_LEVEL.OFFICIAL_CERTIFIED }),
-      merchantApi.listPending({ page: 1, pageSize: 1 }),
-      distributionApi.stats({ startDate: start, endDate: end }).catch(() => null)
-    ])
-    officialMerchantCount.value =
-      officialRes.pagination?.total ?? officialRes.list?.length ?? 0
-    pendingAuditCount.value =
-      pendingRes.pagination?.total ?? pendingRes.list?.length ?? 0
-    distributionSummary.value = statsRes?.summary ?? null
-  } catch (e) {
-    console.error(e instanceof ApiError ? e.message : e)
+    await portal.loadMy(true)
   } finally {
     loading.value = false
   }
@@ -143,10 +135,6 @@ onMounted(loadStats)
 .infoList li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #f0f0f3; font-size: 14px; }
 .infoList span { color: #8c8c9a; flex-shrink: 0; }
 .infoList strong { color: #1f1f2e; text-align: right; font-weight: 500; }
-.subStats { margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0f0f3; }
-.subStat { display: flex; justify-content: space-between; font-size: 14px; }
-.subStat span { color: #8c8c9a; }
-.subStat strong { color: #5c5c9e; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
 .actionBtn { padding: 10px 16px; border-radius: 8px; background: #5c5c9e; color: #fff; text-decoration: none; font-size: 14px; }
 .tips { padding-left: 18px; color: #5c5c66; line-height: 1.8; font-size: 14px; }

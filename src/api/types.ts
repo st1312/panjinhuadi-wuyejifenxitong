@@ -159,6 +159,7 @@ export interface CoinFreezeRecordItem {
 export interface MerchantItem {
   id: string
   platformMerchantId?: string
+  propertyCompanyId?: string
   name: string
   description?: string
   category?: string
@@ -940,6 +941,7 @@ export interface SectorLeaderDetail {
   residentId?: string
   residentName?: string
   residentPhone?: string
+  phone?: string
   coordinatorId?: string
   coordinatorName?: string
   sector?: string
@@ -949,6 +951,8 @@ export interface SectorLeaderDetail {
   description?: string
   individualLeaderCount?: number
   merchantCount?: number
+  activeSpecialOfferCount?: number
+  totalEarnings?: number
   status?: string
   createdAt?: string
   updatedAt?: string
@@ -968,16 +972,28 @@ export interface SectorLeaderUpdatePayload {
   status?: string
 }
 
+export interface SectorLeaderRemoveResult {
+  id: string
+  status?: string
+  deletedAt?: string
+}
+
 export interface CoordinatorDetail {
   id: string
   residentId?: string
   residentName?: string
   residentPhone?: string
+  phone?: string
   propertyCompanyId?: string
   propertyCompanyName?: string
   description?: string
   sectorCount?: number
+  sectorLeaderCount?: number
+  merchantCount?: number
   individualLeaderCount?: number
+  activeSpecialOfferCount?: number
+  commissionRate?: number
+  totalEarnings?: number
   status?: string
   createdAt?: string
   updatedAt?: string
@@ -1030,46 +1046,55 @@ export interface ActivityGroupMemberItem {
 export interface SpecialOfferItem {
   id: string
   title: string
-  description?: string
+  content?: string
+  targetType?: string
+  targetTags?: string
+  publisherName?: string
+  publisherRole?: string
   merchantId?: string
   merchantName?: string
+  communityId?: string
   coverUrl?: string
-  discountType?: string
-  discountValue?: number
+  discountInfo?: string
   minConsumption?: number
   startTime?: string
   endTime?: string
   totalQuota?: number
-  remainingQuota?: number
   perUserQuota?: number
-  targetBuildings?: string[]
+  usedQuota?: number
   status?: string
   createdAt?: string
 }
 
 export interface SpecialOfferCreatePayload {
   title: string
-  description?: string
-  merchantId?: string
-  coverUrl?: string
-  discountType: string
-  discountValue: number
-  minConsumption?: number
+  content: string
+  targetType: string
   startTime: string
   endTime: string
+  targetTags?: string
+  communityId?: string
+  merchantId?: string
+  coverUrl?: string
+  discountInfo?: string
+  minConsumption?: number
   totalQuota?: number
   perUserQuota?: number
-  targetBuildings?: string[]
-  propertyCompanyId?: string
+  status?: string
 }
 
 export interface SpecialOfferUpdatePayload {
   title?: string
-  description?: string
-  discountValue?: number
-  minConsumption?: number
+  content?: string
+  targetType?: string
   startTime?: string
   endTime?: string
+  targetTags?: string
+  communityId?: string
+  merchantId?: string
+  coverUrl?: string
+  discountInfo?: string
+  minConsumption?: number
   totalQuota?: number
   perUserQuota?: number
   status?: string

@@ -3,95 +3,206 @@
     <div class="header">
       <div>
         <h1 class="title">商家管理</h1>
-        <p class="desc">官方推荐商家展示、入驻审核与等级管理</p>
+        <p class="desc">商家列表查询、入驻审核与信息维护</p>
       </div>
     </div>
 
     <div class="tabs">
-      <button
-        class="tab"
-        :class="{ active: tab === 'official' }"
-        @click="switchTab('official')"
-      >
-        官方认证商家
-      </button>
-      <button
-        class="tab"
-        :class="{ active: tab === 'pending' }"
-        @click="switchTab('pending')"
-      >
-        待审核入驻
-      </button>
-      <button
-        class="tab"
-        :class="{ active: tab === 'all' }"
-        @click="switchTab('all')"
-      >
-        全部商家
-      </button>
+      <button class="tab" :class="{ active: tab === 'all' }" @click="switchTab('all')">全部商家</button>
+      <button class="tab" :class="{ active: tab === 'official' }" @click="switchTab('official')">官方认证商家</button>
+      <button class="tab" :class="{ active: tab === 'pending' }" @click="switchTab('pending')">待审核入驻</button>
     </div>
 
     <div class="toolbar">
-      <input v-model="keyword" class="input" placeholder="搜索商家名称" @keyup.enter="reload" />
+      <input
+        v-model="keyword"
+        class="input searchInput"
+        placeholder="搜索商家名称或上架商品名称"
+        @keyup.enter="reload"
+      />
+      <select v-model="categoryFilter" class="input" @change="reload">
+        <option value="">全部分类</option>
+        <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+      </select>
+      <select v-if="tab === 'all'" v-model="levelFilter" class="input" @change="reload">
+        <option value="">全部等级</option>
+        <option v-for="opt in MERCHANT_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
       <button class="btnPrimary" :disabled="loading" @click="reload">搜索</button>
+      <button class="btnGhost" :disabled="loading" @click="reload">刷新</button>
     </div>
 
     <div class="panel">
       <div v-if="loading" class="loading">加载中...</div>
       <p v-else-if="error" class="error">{{ error }}</p>
-      <table v-else-if="merchants.length" class="table">
-        <thead>
-          <tr>
-            <th>商家名称</th>
-            <th>分类</th>
-            <th>等级</th>
-            <th v-if="tab === 'pending'">审核状态</th>
-            <th v-else>状态</th>
-            <th>排名</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in merchants" :key="item.id">
-            <td>{{ item.name }}</td>
-            <td>{{ item.category || '—' }}</td>
-            <td>{{ getEnumLabel(MERCHANT_LEVEL_LABEL, item.merchantLevel) }}</td>
-            <td v-if="tab === 'pending'">
-              {{ getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, item.auditStatus) }}
-            </td>
-            <td v-else>{{ getEnumLabel(MERCHANT_STATUS_LABEL, item.status) }}</td>
-            <td>{{ item.rankOrder ?? '—' }}</td>
-            <td class="actions">
-              <button
-                v-if="tab === 'pending'"
-                class="btnPrimarySm"
-                @click="openAudit(item)"
-              >
-                审核
-              </button>
-              <button
-                v-else-if="item.merchantLevel !== MERCHANT_LEVEL.OFFICIAL_CERTIFIED"
-                class="btnGhostSm"
-                :disabled="upgradingId === item.id"
-                @click="setOfficial(item)"
-              >
-                设为官方认证
-              </button>
-              <span v-else class="badge">官方推荐</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else-if="merchants.length" class="tableWrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>封面</th>
+              <th>商家名称</th>
+              <th>分类</th>
+              <th>等级</th>
+              <th>审核状态</th>
+              <th>营业状态</th>
+              <th>联系电话</th>
+              <th>排序</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in merchants" :key="item.id">
+              <td>
+                <img
+                  v-if="item.coverUrls?.[0]"
+                  :src="item.coverUrls[0]"
+                  alt=""
+                  class="coverThumb"
+                  @error="onCoverError"
+                />
+                <span v-else class="coverPlaceholder">—</span>
+              </td>
+              <td class="nameCell">{{ item.name }}</td>
+              <td>{{ item.category || '—' }}</td>
+              <td>{{ getEnumLabel(MERCHANT_LEVEL_LABEL, item.merchantLevel) }}</td>
+              <td>{{ getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, item.auditStatus) }}</td>
+              <td>{{ getEnumLabel(MERCHANT_STATUS_LABEL, item.status) }}</td>
+              <td>{{ item.contactPhone || '—' }}</td>
+              <td>{{ item.rankOrder ?? '—' }}</td>
+              <td class="timeCell">{{ item.createdAt || '—' }}</td>
+              <td class="actions">
+                <button class="btnLink" @click="openDetail(item.id)">详情</button>
+                <button
+                  v-if="canEdit(item)"
+                  class="btnLink"
+                  @click="openEdit(item.id)"
+                >
+                  编辑
+                </button>
+                <button
+                  v-if="item.auditStatus === MERCHANT_AUDIT_STATUS.PENDING"
+                  class="btnPrimarySm"
+                  @click="openAudit(item)"
+                >
+                  审核
+                </button>
+                <button
+                  v-else-if="canSetOfficial(item)"
+                  class="btnGhostSm"
+                  :disabled="upgradingId === item.id"
+                  @click="setOfficial(item)"
+                >
+                  设为官方认证
+                </button>
+                <span v-else-if="item.merchantLevel === MERCHANT_LEVEL.OFFICIAL_CERTIFIED" class="badge">官方推荐</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p v-else class="empty">暂无商家</p>
     </div>
 
     <div v-if="totalPages > 1" class="pager">
       <button class="btnGhost" :disabled="page <= 1 || loading" @click="changePage(page - 1)">上一页</button>
-      <span>{{ page }} / {{ totalPages }}</span>
+      <span>{{ page }} / {{ totalPages }}（共 {{ total }} 条）</span>
       <button class="btnGhost" :disabled="page >= totalPages || loading" @click="changePage(page + 1)">下一页</button>
     </div>
 
     <Teleport to="body">
+      <div v-if="detailOpen" class="modalOverlay" @click.self="closeDetail">
+        <div class="modal modalWide">
+          <div class="modalHeader">
+            <h3 class="modalTitle">商家详情</h3>
+            <button class="modalClose" @click="closeDetail">&times;</button>
+          </div>
+          <div class="modalBody">
+            <div v-if="detailLoading" class="loading">加载中...</div>
+            <p v-else-if="detailError" class="error">{{ detailError }}</p>
+            <template v-else-if="detailData">
+              <div v-if="detailData.coverUrls?.length" class="coverList">
+                <img v-for="(url, idx) in detailData.coverUrls" :key="idx" :src="url" alt="" @error="onCoverError" />
+              </div>
+              <ul class="detailList">
+                <li v-for="row in detailRows" :key="row.label">
+                  <span>{{ row.label }}</span><strong>{{ row.value }}</strong>
+                </li>
+              </ul>
+            </template>
+          </div>
+          <div class="modalFooter">
+            <button class="btnGhost" @click="closeDetail">关闭</button>
+            <button v-if="detailData && canEdit(detailData)" class="btnPrimary" @click="openEditFromDetail">编辑</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="editOpen" class="modalOverlay" @click.self="closeEdit">
+        <div class="modal modalWide">
+          <div class="modalHeader">
+            <h3 class="modalTitle">编辑商家</h3>
+            <button class="modalClose" @click="closeEdit">&times;</button>
+          </div>
+          <div class="modalBody">
+            <div v-if="editLoading" class="loading">加载中...</div>
+            <template v-else>
+              <p v-if="editError" class="error">{{ editError }}</p>
+              <div class="field">
+                <label class="label">商家名称</label>
+                <input v-model="editForm.name" class="input" maxlength="100" />
+              </div>
+              <div class="field">
+                <label class="label">描述</label>
+                <textarea v-model="editForm.description" class="textarea" rows="2" />
+              </div>
+              <div class="field">
+                <label class="label">封面图 URL</label>
+                <input v-model="editForm.coverUrlsText" class="input" placeholder="多个 URL 用英文逗号分隔" />
+              </div>
+              <div class="field">
+                <label class="label">视频 URL</label>
+                <input v-model="editForm.videoUrl" class="input" maxlength="500" />
+              </div>
+              <div class="fieldRow">
+                <div class="field">
+                  <label class="label">联系电话</label>
+                  <input v-model="editForm.contactPhone" class="input" maxlength="20" />
+                </div>
+                <div class="field">
+                  <label class="label">营业时间</label>
+                  <input v-model="editForm.businessHours" class="input" maxlength="50" placeholder="08:00-22:00" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">地址</label>
+                <input v-model="editForm.address" class="input" maxlength="200" />
+              </div>
+              <div class="fieldRow">
+                <div class="field">
+                  <label class="label">配送费</label>
+                  <input v-model="editForm.deliveryFee" type="number" min="0" step="0.01" class="input" />
+                </div>
+                <div class="field">
+                  <label class="label">满额免配送</label>
+                  <input v-model="editForm.freeDeliveryThreshold" type="number" min="0" step="0.01" class="input" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">排序权重</label>
+                <input v-model.number="editForm.rankOrder" type="number" min="0" step="1" class="input" />
+              </div>
+            </template>
+          </div>
+          <div class="modalFooter">
+            <button class="btnGhost" @click="closeEdit">取消</button>
+            <button class="btnPrimary" :disabled="editSubmitting || editLoading" @click="submitEdit">
+              {{ editSubmitting ? '保存中...' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div v-if="auditTarget" class="modalOverlay" @click.self="closeAudit">
         <div class="modal">
           <div class="modalHeader">
@@ -137,30 +248,61 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { merchantApi } from '../../api/services'
-import type { MerchantItem } from '../../api/types'
+import type { MerchantItem, MerchantUpdatePayload } from '../../api/types'
 import { ApiError } from '../../api/request'
 import {
   AUDIT_RESULT,
   getEnumLabel,
+  MERCHANT_AUDIT_STATUS,
   MERCHANT_AUDIT_STATUS_LABEL,
   MERCHANT_LEVEL,
   MERCHANT_LEVEL_LABEL,
   MERCHANT_LEVEL_OPTIONS,
   MERCHANT_STATUS_LABEL
 } from '../../constants/enums'
+import { useCoordinatorPortalStore } from '../../stores/coordinatorPortal'
 
 type TabKey = 'official' | 'pending' | 'all'
 
-const tab = ref<TabKey>('official')
+const portal = useCoordinatorPortalStore()
+const tab = ref<TabKey>('all')
 const merchants = ref<MerchantItem[]>([])
+const categoryOptions = ref<string[]>([])
 const loading = ref(false)
 const error = ref('')
 const keyword = ref('')
+const categoryFilter = ref('')
+const levelFilter = ref('')
 const page = ref(1)
 const totalPages = ref(1)
+const total = ref(0)
 const upgradingId = ref('')
+
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailError = ref('')
+const detailData = ref<MerchantItem | null>(null)
+
+const editOpen = ref(false)
+const editLoading = ref(false)
+const editSubmitting = ref(false)
+const editError = ref('')
+const editingId = ref('')
+const editForm = reactive({
+  name: '',
+  description: '',
+  coverUrlsText: '',
+  videoUrl: '',
+  contactPhone: '',
+  businessHours: '',
+  address: '',
+  deliveryFee: '' as string | number,
+  freeDeliveryThreshold: '' as string | number,
+  rankOrder: undefined as number | undefined
+})
+
 const auditTarget = ref<MerchantItem | null>(null)
 const auditing = ref(false)
 const auditError = ref('')
@@ -171,26 +313,84 @@ const auditForm = reactive({
   remark: ''
 })
 
+const detailRows = computed(() => {
+  const d = detailData.value
+  if (!d) return []
+  return [
+    { label: '商家 ID', value: d.id || '—' },
+    { label: '平台商家 ID', value: d.platformMerchantId || '—' },
+    { label: '物业 ID', value: d.propertyCompanyId || '—' },
+    { label: '商家名称', value: d.name || '—' },
+    { label: '分类', value: d.category || '—' },
+    { label: '等级', value: getEnumLabel(MERCHANT_LEVEL_LABEL, d.merchantLevel) },
+    { label: '等级权重', value: d.levelWeight != null ? String(d.levelWeight) : '—' },
+    { label: '审核状态', value: getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, d.auditStatus) },
+    { label: '营业状态', value: getEnumLabel(MERCHANT_STATUS_LABEL, d.status) },
+    { label: '联系电话', value: d.contactPhone || '—' },
+    { label: '地址', value: d.address || '—' },
+    { label: '营业时间', value: d.businessHours || '—' },
+    { label: '配送费', value: formatMoney(d.deliveryFee) },
+    { label: '满额免配送', value: formatMoney(d.freeDeliveryThreshold) },
+    { label: '会员折扣价', value: formatMoney(d.memberDiscountPrice) },
+    { label: '物业币返利', value: d.coinRebateEnabled ? `${formatPercent(d.coinRebateRate)}%` : '未启用' },
+    { label: '排序权重', value: d.rankOrder != null ? String(d.rankOrder) : '—' },
+    { label: '描述', value: d.description || '—' },
+    { label: '创建时间', value: d.createdAt || '—' },
+    { label: '更新时间', value: d.updatedAt || '—' }
+  ]
+})
+
+function propertyCompanyId() {
+  return portal.detail?.propertyCompanyId || undefined
+}
+
+function formatMoney(value?: string | number | null) {
+  if (value == null || value === '') return '—'
+  return `¥${Number(value).toFixed(2)}`
+}
+
+function formatPercent(value?: number) {
+  if (value == null) return '0'
+  return (Number(value) * 100).toFixed(0)
+}
+
+function collectCategories(list: MerchantItem[]) {
+  const set = new Set(categoryOptions.value)
+  list.forEach((item) => {
+    if (item.category) set.add(item.category)
+  })
+  categoryOptions.value = Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+}
+
+function buildListParams(pageNo: number) {
+  const params: Parameters<typeof merchantApi.list>[0] = {
+    page: pageNo,
+    pageSize: 20,
+    keyword: keyword.value.trim() || undefined,
+    category: categoryFilter.value || undefined,
+    sort: '-rankOrder',
+    propertyCompanyId: propertyCompanyId()
+  }
+  if (tab.value === 'official') {
+    params.merchantLevel = MERCHANT_LEVEL.OFFICIAL_CERTIFIED
+  } else if (tab.value === 'pending') {
+    params.auditStatus = MERCHANT_AUDIT_STATUS.PENDING
+  } else if (levelFilter.value) {
+    params.merchantLevel = levelFilter.value
+  }
+  return params
+}
+
 async function load(pageNo = 1) {
   loading.value = true
   error.value = ''
   try {
-    const params = {
-      page: pageNo,
-      pageSize: 20,
-      keyword: keyword.value.trim() || undefined,
-      sort: '+rankOrder' as string
-    }
-    const res =
-      tab.value === 'pending'
-        ? await merchantApi.listPending(params)
-        : await merchantApi.list({
-            ...params,
-            merchantLevel: tab.value === 'official' ? MERCHANT_LEVEL.OFFICIAL_CERTIFIED : undefined
-          })
+    const res = await merchantApi.list(buildListParams(pageNo))
     merchants.value = res.list || []
+    collectCategories(merchants.value)
     page.value = res.pagination?.page || pageNo
     totalPages.value = res.pagination?.totalPages || 1
+    total.value = res.pagination?.total ?? merchants.value.length
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '商家列表加载失败'
   } finally {
@@ -198,8 +398,20 @@ async function load(pageNo = 1) {
   }
 }
 
+function canEdit(item: MerchantItem) {
+  return item.auditStatus === MERCHANT_AUDIT_STATUS.APPROVED
+}
+
+function canSetOfficial(item: MerchantItem) {
+  return (
+    item.auditStatus === MERCHANT_AUDIT_STATUS.APPROVED &&
+    item.merchantLevel !== MERCHANT_LEVEL.OFFICIAL_CERTIFIED
+  )
+}
+
 function switchTab(next: TabKey) {
   tab.value = next
+  levelFilter.value = ''
   reload()
 }
 
@@ -209,6 +421,97 @@ function reload() {
 
 function changePage(next: number) {
   load(next)
+}
+
+async function openDetail(id: string) {
+  detailOpen.value = true
+  detailLoading.value = true
+  detailError.value = ''
+  detailData.value = null
+  try {
+    detailData.value = await merchantApi.get(id, propertyCompanyId())
+  } catch (e) {
+    detailError.value = e instanceof ApiError ? e.message : '详情加载失败'
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function closeDetail() {
+  detailOpen.value = false
+  detailData.value = null
+}
+
+function openEditFromDetail() {
+  if (!detailData.value) return
+  const id = detailData.value.id
+  closeDetail()
+  openEdit(id)
+}
+
+function applyDetailToEditForm(data: MerchantItem) {
+  editForm.name = data.name || ''
+  editForm.description = data.description || ''
+  editForm.coverUrlsText = data.coverUrls?.join(', ') || ''
+  editForm.videoUrl = data.videoUrl || ''
+  editForm.contactPhone = data.contactPhone || ''
+  editForm.businessHours = data.businessHours || ''
+  editForm.address = data.address || ''
+  editForm.deliveryFee = data.deliveryFee ?? ''
+  editForm.freeDeliveryThreshold = data.freeDeliveryThreshold ?? ''
+  editForm.rankOrder = data.rankOrder
+}
+
+async function openEdit(id: string) {
+  editingId.value = id
+  editOpen.value = true
+  editLoading.value = true
+  editError.value = ''
+  try {
+    const data = await merchantApi.get(id, propertyCompanyId())
+    applyDetailToEditForm(data)
+  } catch (e) {
+    editError.value = e instanceof ApiError ? e.message : '详情加载失败'
+  } finally {
+    editLoading.value = false
+  }
+}
+
+function closeEdit() {
+  editOpen.value = false
+  editingId.value = ''
+  editSubmitting.value = false
+}
+
+async function submitEdit() {
+  if (!editingId.value) return
+  editSubmitting.value = true
+  editError.value = ''
+  try {
+    const coverUrls = editForm.coverUrlsText
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const payload: MerchantUpdatePayload = {
+      name: editForm.name.trim() || undefined,
+      description: editForm.description.trim() || undefined,
+      coverUrls: coverUrls.length ? coverUrls : undefined,
+      videoUrl: editForm.videoUrl.trim() || undefined,
+      contactPhone: editForm.contactPhone.trim() || undefined,
+      businessHours: editForm.businessHours.trim() || undefined,
+      address: editForm.address.trim() || undefined,
+      deliveryFee: editForm.deliveryFee !== '' ? editForm.deliveryFee : undefined,
+      freeDeliveryThreshold: editForm.freeDeliveryThreshold !== '' ? editForm.freeDeliveryThreshold : undefined,
+      rankOrder: editForm.rankOrder
+    }
+    await merchantApi.update(editingId.value, payload, propertyCompanyId())
+    closeEdit()
+    await load(page.value)
+  } catch (e) {
+    editError.value = e instanceof ApiError ? e.message : '保存失败'
+  } finally {
+    editSubmitting.value = false
+  }
 }
 
 function openAudit(item: MerchantItem) {
@@ -222,6 +525,7 @@ function openAudit(item: MerchantItem) {
 
 function closeAudit() {
   auditTarget.value = null
+  auditing.value = false
 }
 
 async function submitAudit() {
@@ -253,7 +557,11 @@ async function submitAudit() {
 async function setOfficial(item: MerchantItem) {
   upgradingId.value = item.id
   try {
-    await merchantApi.update(item.id, { merchantLevel: MERCHANT_LEVEL.OFFICIAL_CERTIFIED })
+    await merchantApi.audit(item.id, {
+      auditResult: AUDIT_RESULT.APPROVED,
+      merchantLevel: MERCHANT_LEVEL.OFFICIAL_CERTIFIED,
+      remark: '统筹设为官方认证'
+    })
     await load(page.value)
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '设置官方认证失败'
@@ -262,40 +570,64 @@ async function setOfficial(item: MerchantItem) {
   }
 }
 
-onMounted(() => load(1))
+function onCoverError(e: Event) {
+  const img = e.target as HTMLImageElement
+  img.style.display = 'none'
+}
+
+onMounted(async () => {
+  await portal.loadMy()
+  await load(1)
+})
 </script>
 
 <style scoped>
-.page { max-width: 1200px; }
+.page { max-width: 1280px; }
 .header { margin-bottom: 24px; }
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
 .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 14px; }
 .tab.active { background: #5c5c9e; color: #fff; border-color: #5c5c9e; }
-.toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; min-width: 220px; }
+.toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.searchInput { min-width: 240px; flex: 1; max-width: 360px; }
+.input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
 .panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f3; text-align: left; }
-.table th { color: #8c8c9a; font-weight: 500; }
-.actions { display: flex; gap: 8px; align-items: center; }
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
+.table th, .table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f3; text-align: left; vertical-align: middle; }
+.table th { color: #8c8c9a; font-weight: 500; white-space: nowrap; }
+.nameCell { max-width: 160px; }
+.timeCell { font-size: 13px; color: #5c5c66; white-space: nowrap; }
+.coverThumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #f5f5f7; }
+.coverPlaceholder { color: #c0c0c8; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.btnLink { border: none; background: none; color: #5c5c9e; cursor: pointer; font-size: 13px; padding: 0; }
 .btnPrimarySm { padding: 6px 12px; border-radius: 6px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; font-size: 13px; }
 .btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 13px; }
 .badge { font-size: 12px; color: #5c5c9e; background: #f0f0ff; padding: 4px 8px; border-radius: 4px; }
 .loading, .empty, .error { font-size: 14px; color: #8c8c9a; padding: 12px 0; }
 .error { color: #e05c5c; }
 .pager { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 14px; }
-.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
-.modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal { width: 460px; max-width: calc(100vw - 32px); background: #fff; border-radius: 12px; overflow: hidden; }
+.modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.modal { width: 480px; max-width: calc(100vw - 32px); background: #fff; border-radius: 12px; overflow: hidden; max-height: 90vh; overflow-y: auto; }
+.modalWide { width: 640px; }
 .modalHeader { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f3; }
 .modalTitle { font-size: 16px; font-weight: 600; }
 .modalClose { border: none; background: none; font-size: 22px; cursor: pointer; color: #8c8c9a; }
 .modalBody { padding: 20px; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid #f0f0f3; }
 .field { margin-bottom: 14px; }
+.fieldRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .label { display: block; font-size: 13px; color: #8c8c9a; margin-bottom: 6px; }
 .textarea { width: 100%; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; resize: vertical; box-sizing: border-box; }
+.coverList { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.coverList img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
+.detailList { list-style: none; margin: 0; padding: 0; }
+.detailList li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #f0f0f3; font-size: 14px; }
+.detailList span { color: #8c8c9a; flex-shrink: 0; }
+.detailList strong { color: #1f1f2e; text-align: right; font-weight: 500; word-break: break-all; }
+@media (max-width: 640px) { .fieldRow { grid-template-columns: 1fr; } }
 </style>

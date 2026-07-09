@@ -35,9 +35,10 @@
           <h3 class="cardTitle">板块信息</h3>
           <ul class="infoList">
             <li><span>所属物业</span><strong>{{ propertyName }}</strong></li>
+            <li><span>联系电话</span><strong>{{ phone || '—' }}</strong></li>
             <li><span>统筹负责人</span><strong>{{ coordinatorName }}</strong></li>
             <li><span>个体负责人</span><strong>{{ individualLeaderCount }} 人</strong></li>
-            <li><span>工作说明</span><strong>{{ description }}</strong></li>
+            <li><span>累计收益</span><strong>¥{{ formatMoney(totalEarnings) }}</strong></li>
           </ul>
         </div>
         <div class="card">
@@ -61,49 +62,39 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { merchantApi, specialOfferApi } from '../../api/services'
-import { ApiError } from '../../api/request'
-import { getEnumLabel, SECTOR_TYPE_LABEL, SPECIAL_OFFER_STATUS } from '../../constants/enums'
 import { useAuthStore } from '../../stores/auth'
 import { useSectorLeaderPortalStore } from '../../stores/sectorLeaderPortal'
+import { getEnumLabel, SECTOR_TYPE_LABEL } from '../../constants/enums'
 
 const auth = useAuthStore()
 const portal = useSectorLeaderPortalStore()
 const loading = ref(false)
-const merchantCount = ref(0)
-const activeOfferCount = ref(0)
 
 const detail = computed(() => portal.detail)
 const displayName = computed(
-  () => detail.value?.residentName || auth.profile?.name || auth.username || '—'
+  () => detail.value?.residentName || auth.username || '—'
 )
 const sectorLabel = computed(() => {
   if (detail.value?.sectorName) return detail.value.sectorName
   return getEnumLabel(SECTOR_TYPE_LABEL, detail.value?.sector, '—')
 })
-const propertyName = computed(
-  () => detail.value?.propertyCompanyName || auth.profile?.propertyName || '—'
-)
+const propertyName = computed(() => detail.value?.propertyCompanyName || '—')
+const phone = computed(() => detail.value?.phone || detail.value?.residentPhone || '')
 const coordinatorName = computed(() => detail.value?.coordinatorName || '—')
 const individualLeaderCount = computed(() => detail.value?.individualLeaderCount ?? 0)
-const description = computed(() => detail.value?.description || '—')
+const merchantCount = computed(() => detail.value?.merchantCount ?? 0)
+const activeOfferCount = computed(() => detail.value?.activeSpecialOfferCount ?? 0)
+const totalEarnings = computed(() => detail.value?.totalEarnings)
+
+function formatMoney(value?: number) {
+  if (value === undefined || value === null) return '0.00'
+  return Number(value).toFixed(2)
+}
 
 async function loadStats() {
   loading.value = true
   try {
     await portal.loadMy()
-    const [merchantsRes, offersRes] = await Promise.all([
-      merchantApi.list({ page: 1, pageSize: 1, sort: '+rankOrder' }),
-      specialOfferApi.list({ page: 1, pageSize: 1, status: SPECIAL_OFFER_STATUS.ACTIVE })
-    ])
-    merchantCount.value =
-      detail.value?.merchantCount ??
-      merchantsRes.pagination?.total ??
-      merchantsRes.list?.length ??
-      0
-    activeOfferCount.value = offersRes.pagination?.total ?? offersRes.list?.length ?? 0
-  } catch (e) {
-    console.error(e instanceof ApiError ? e.message : e)
   } finally {
     loading.value = false
   }

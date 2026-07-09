@@ -9,6 +9,10 @@
     </div>
 
     <div class="toolbar">
+      <select v-model="targetTypeFilter" class="input" @change="reload">
+        <option value="">全部对象</option>
+        <option v-for="opt in targetTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
       <select v-model="statusFilter" class="input" @change="reload">
         <option value="">全部状态</option>
         <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -23,8 +27,9 @@
         <thead>
           <tr>
             <th>标题</th>
+            <th>推送对象</th>
             <th>关联商家</th>
-            <th>优惠</th>
+            <th>优惠信息</th>
             <th>有效期</th>
             <th>状态</th>
             <th>操作</th>
@@ -33,14 +38,17 @@
         <tbody>
           <tr v-for="item in offers" :key="item.id">
             <td>{{ item.title }}</td>
-            <td>{{ item.merchantName || '统筹推送' }}</td>
-            <td>{{ formatDiscount(item) }}</td>
+            <td>{{ getEnumLabel(SPECIAL_OFFER_TARGET_TYPE_LABEL, item.targetType, '—') }}</td>
+            <td>{{ item.merchantName || '—' }}</td>
+            <td>{{ item.discountInfo || '—' }}</td>
             <td>{{ item.startTime || '—' }} ~ {{ item.endTime || '—' }}</td>
-            <td>{{ getEnumLabel(SPECIAL_OFFER_STATUS_LABEL, item.status) }}</td>
+            <td>
+              <span class="statusTag" :class="normalizeSpecialOfferStatusClass(item.status)">{{ getEnumLabel(SPECIAL_OFFER_STATUS_LABEL, item.status) }}</span>
+            </td>
             <td>
               <button
                 class="btnDanger"
-                :disabled="removingId === item.id"
+                :disabled="!isOfferRemovable(item.status) || removingId === item.id"
                 @click="removeOffer(item.id)"
               >
                 删除
@@ -72,24 +80,25 @@
               <input v-model="form.title" class="input" placeholder="如：官方推荐满50减5" />
             </div>
             <div class="field">
+              <label class="label">活动内容</label>
+              <textarea v-model="form.content" class="textarea" rows="2" placeholder="请填写活动详细说明" />
+            </div>
+            <div class="field">
+              <label class="label">推送对象</label>
+              <select v-model="form.targetType" class="input">
+                <option v-for="opt in targetTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div v-if="form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT" class="field">
               <label class="label">关联商家</label>
               <select v-model="form.merchantId" class="input">
-                <option value="">统筹通用推送</option>
+                <option value="">请选择商家</option>
                 <option v-for="m in merchantOptions" :key="m.id" :value="m.id">{{ m.name }}</option>
               </select>
             </div>
-            <div class="fieldRow">
-              <div class="field">
-                <label class="label">优惠类型</label>
-                <select v-model="form.discountType" class="input">
-                  <option :value="SPECIAL_OFFER_DISCOUNT_TYPE.FIXED">固定金额</option>
-                  <option :value="SPECIAL_OFFER_DISCOUNT_TYPE.PERCENT">百分比</option>
-                </select>
-              </div>
-              <div class="field">
-                <label class="label">优惠值</label>
-                <input v-model.number="form.discountValue" type="number" min="0.01" step="0.01" class="input" />
-              </div>
+            <div class="field">
+              <label class="label">优惠信息</label>
+              <input v-model="form.discountInfo" class="input" placeholder="如：满100减20" />
             </div>
             <div class="field">
               <label class="label">最低消费（可选）</label>
@@ -106,8 +115,10 @@
               </div>
             </div>
             <div class="field">
-              <label class="label">描述（可选）</label>
-              <textarea v-model="form.description" class="textarea" rows="2" />
+              <label class="label">状态</label>
+              <select v-model="form.status" class="input">
+                <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
             </div>
           </div>
           <div class="modalFooter">
@@ -129,50 +140,54 @@ import type { MerchantItem, SpecialOfferItem } from '../../api/types'
 import { ApiError } from '../../api/request'
 import {
   getEnumLabel,
+  isSpecialOfferArchived,
   MERCHANT_LEVEL,
-  SPECIAL_OFFER_DISCOUNT_TYPE,
+  normalizeSpecialOfferStatusClass,
   SPECIAL_OFFER_STATUS,
-  SPECIAL_OFFER_STATUS_LABEL
+  SPECIAL_OFFER_STATUS_LABEL,
+  SPECIAL_OFFER_STATUS_OPTIONS,
+  SPECIAL_OFFER_TARGET_TYPE,
+  SPECIAL_OFFER_TARGET_TYPE_LABEL,
+  SPECIAL_OFFER_TARGET_TYPE_OPTIONS
 } from '../../constants/enums'
-import { useAuthStore } from '../../stores/auth'
 
-const auth = useAuthStore()
+const DEFAULT_COMMUNITY_ID = import.meta.env.VITE_COMMUNITY_ID || 'com_demo001'
+
 const offers = ref<SpecialOfferItem[]>([])
 const merchantOptions = ref<MerchantItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const page = ref(1)
 const totalPages = ref(1)
+const targetTypeFilter = ref('')
 const statusFilter = ref('')
 const removingId = ref('')
 const modalOpen = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 
-const statusOptions = Object.entries(SPECIAL_OFFER_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const targetTypeOptions = SPECIAL_OFFER_TARGET_TYPE_OPTIONS
+const statusOptions = SPECIAL_OFFER_STATUS_OPTIONS
 
 const form = reactive({
   title: '',
+  content: '',
+  targetType: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS,
   merchantId: '',
-  discountType: SPECIAL_OFFER_DISCOUNT_TYPE.FIXED,
-  discountValue: 5,
+  discountInfo: '',
   minConsumption: undefined as number | undefined,
   startTime: '',
   endTime: '',
-  description: ''
+  status: SPECIAL_OFFER_STATUS.DRAFT
 })
 
-function formatDiscount(item: SpecialOfferItem) {
-  if (item.discountValue == null) return '—'
-  if (item.discountType === SPECIAL_OFFER_DISCOUNT_TYPE.PERCENT) {
-    return `${item.discountValue}%`
-  }
-  return `¥${Number(item.discountValue).toFixed(2)}`
+function isOfferRemovable(status?: string) {
+  return !isSpecialOfferArchived(status)
 }
 
 function toApiDateTime(value: string) {
   if (!value) return ''
-  return value.replace('T', ' ') + ':00'
+  return `${value.replace('T', ' ')}:00`
 }
 
 function defaultRange() {
@@ -207,8 +222,8 @@ async function load(pageNo = 1) {
     const res = await specialOfferApi.list({
       page: pageNo,
       pageSize: 20,
-      status: statusFilter.value || undefined,
-      sort: '-createdAt'
+      targetType: targetTypeFilter.value || undefined,
+      status: statusFilter.value || undefined
     })
     offers.value = res.list || []
     page.value = res.pagination?.page || pageNo
@@ -230,11 +245,13 @@ function changePage(next: number) {
 
 function openCreate() {
   form.title = ''
+  form.content = ''
+  form.targetType = SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS
   form.merchantId = ''
-  form.discountType = SPECIAL_OFFER_DISCOUNT_TYPE.FIXED
-  form.discountValue = 5
+  form.discountInfo = ''
   form.minConsumption = undefined
-  form.description = ''
+  form.status = SPECIAL_OFFER_STATUS.DRAFT
+  submitting.value = false
   defaultRange()
   formError.value = ''
   modalOpen.value = true
@@ -242,6 +259,7 @@ function openCreate() {
 
 function closeModal() {
   modalOpen.value = false
+  submitting.value = false
 }
 
 async function submitCreate() {
@@ -249,8 +267,16 @@ async function submitCreate() {
     formError.value = '请填写标题'
     return
   }
+  if (!form.content.trim()) {
+    formError.value = '请填写活动内容'
+    return
+  }
   if (!form.startTime || !form.endTime) {
     formError.value = '请填写有效期'
+    return
+  }
+  if (form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT && !form.merchantId) {
+    formError.value = '指定商户时请选择商家'
     return
   }
   submitting.value = true
@@ -258,14 +284,17 @@ async function submitCreate() {
   try {
     await specialOfferApi.create({
       title: form.title.trim(),
-      description: form.description.trim() || undefined,
-      merchantId: form.merchantId || undefined,
-      discountType: form.discountType,
-      discountValue: form.discountValue,
-      minConsumption: form.minConsumption,
+      content: form.content.trim(),
+      targetType: form.targetType,
       startTime: toApiDateTime(form.startTime),
       endTime: toApiDateTime(form.endTime),
-      propertyCompanyId: auth.propertyCompanyId || undefined
+      merchantId:
+        form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT ? form.merchantId : undefined,
+      communityId:
+        form.targetType === SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY ? DEFAULT_COMMUNITY_ID : undefined,
+      discountInfo: form.discountInfo.trim() || undefined,
+      minConsumption: form.minConsumption,
+      status: form.status || SPECIAL_OFFER_STATUS.DRAFT
     })
     closeModal()
     await load(1)
@@ -277,7 +306,7 @@ async function submitCreate() {
 }
 
 async function removeOffer(id: string) {
-  if (!confirm('确认删除该特惠推送？')) return
+  if (!confirm('确认删除该特惠推送？删除后将归档。')) return
   removingId.value = id
   try {
     await specialOfferApi.remove(id)
@@ -310,7 +339,15 @@ onMounted(async () => {
 .table th { color: #8c8c9a; font-weight: 500; }
 .loading, .empty, .error { font-size: 14px; color: #8c8c9a; padding: 12px 0; }
 .error { color: #e05c5c; }
-.btnDanger { padding: 6px 12px; border-radius: 6px; background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; cursor: pointer; }
+.statusTag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #f0f0f3; color: #5c5c66; }
+.statusTag.draft { background: #f5f5f5; color: #8c8c9a; }
+.statusTag.active { background: #fff7e6; color: #d48806; }
+.statusTag.published { background: #e6f7ef; color: #389e6d; }
+.statusTag.ended { background: #f0f0f3; color: #5c5c66; }
+.statusTag.archived { background: #f5f5f5; color: #8c8c9a; }
+.statusTag.default { background: #f0f0f3; color: #5c5c66; }
+.btnDanger { padding: 6px 12px; border-radius: 6px; background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; cursor: pointer; font-size: 13px; }
+.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
 .pager { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 14px; }
 .modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal { width: 520px; max-width: calc(100vw - 32px); background: #fff; border-radius: 12px; overflow: hidden; max-height: 90vh; overflow-y: auto; }

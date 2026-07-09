@@ -11,6 +11,7 @@ import Resident from '../views/Resident.vue'
 import Param from '../views/Param.vue'
 import Notice from '../views/Notice.vue'
 import Delivery from '../views/Delivery.vue'
+import SectorLeaders from '../views/SectorLeaders.vue'
 import Login from '../views/Login.vue'
 import MerchantOverview from '../views/merchant/MerchantOverview.vue'
 import MerchantOrders from '../views/merchant/MerchantOrders.vue'
@@ -73,6 +74,12 @@ const routes = [
         name: 'permission',
         component: Permission,
         meta: { title: '权限配置', roles: ADMIN_ROLES }
+      },
+      {
+        path: 'sector-leaders',
+        name: 'sector-leaders',
+        component: SectorLeaders,
+        meta: { title: '板块负责人', roles: ADMIN_ROLES }
       },
       {
         path: 'param',

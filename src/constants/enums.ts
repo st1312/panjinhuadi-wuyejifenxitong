@@ -32,12 +32,16 @@ export const AUDIT_RESULT = {
 
 export const MERCHANT_STATUS = {
   ACTIVE: 'active',
+  FROZEN: 'frozen',
+  DISABLED: 'disabled',
   INACTIVE: 'inactive',
   KICKED: 'kicked'
 } as const
 
 export const MERCHANT_STATUS_LABEL: Record<string, string> = {
   active: '营业中',
+  frozen: '已冻结',
+  disabled: '已禁用',
   inactive: '已停业',
   kicked: '已踢出'
 }
@@ -187,6 +191,17 @@ export const ENTITY_STATUS = {
   INACTIVE: 'inactive'
 } as const
 
+export const ENTITY_STATUS_LABEL: Record<string, string> = {
+  [ENTITY_STATUS.ACTIVE]: '启用',
+  [ENTITY_STATUS.INACTIVE]: '停用'
+}
+
+export const ENTITY_STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: ENTITY_STATUS.ACTIVE, label: '启用' },
+  { value: ENTITY_STATUS.INACTIVE, label: '停用' }
+]
+
 export const PERMISSION_MODULE_LABEL: Record<string, string> = {
   resident: '住户管理',
   merchant: '商家管理',
@@ -262,6 +277,35 @@ export const SECTOR_TYPE_LABEL: Record<string, string> = {
   other: '其他'
 }
 
+export const SECTOR_TYPE_OPTIONS = [
+  { value: SECTOR_TYPE.CLEANING, label: '保洁' },
+  { value: SECTOR_TYPE.REPAIR, label: '维修' },
+  { value: SECTOR_TYPE.SECURITY, label: '安保' },
+  { value: SECTOR_TYPE.GREENING, label: '绿化' },
+  { value: SECTOR_TYPE.OTHER, label: '其他' }
+]
+
+export const SPECIAL_OFFER_TARGET_TYPE = {
+  ALL_RESIDENTS: '全体业主',
+  SPECIFIC_COMMUNITY: '指定小区',
+  SPECIFIC_MERCHANT: '指定商户'
+} as const
+
+export const SPECIAL_OFFER_TARGET_TYPE_LABEL: Record<string, string> = {
+  [SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS]: '全体业主',
+  [SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY]: '指定小区',
+  [SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT]: '指定商户',
+  all: '全体业主',
+  community: '指定小区',
+  merchant: '指定商户'
+}
+
+export const SPECIAL_OFFER_TARGET_TYPE_OPTIONS = [
+  { value: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS, label: '全体业主' },
+  { value: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY, label: '指定小区' },
+  { value: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT, label: '指定商户' }
+]
+
 export const SPECIAL_OFFER_DISCOUNT_TYPE = {
   FIXED: 'fixed',
   PERCENT: 'percent'
@@ -273,15 +317,74 @@ export const SPECIAL_OFFER_DISCOUNT_TYPE_LABEL: Record<string, string> = {
 }
 
 export const SPECIAL_OFFER_STATUS = {
-  ACTIVE: 'active',
+  DRAFT: 'draft',
+  PENDING_PUBLISH: 'active',
+  PUBLISHED: 'published',
   ENDED: 'ended',
   ARCHIVED: 'archived'
 } as const
 
 export const SPECIAL_OFFER_STATUS_LABEL: Record<string, string> = {
-  active: '进行中',
-  ended: '已结束',
-  archived: '已归档'
+  [SPECIAL_OFFER_STATUS.DRAFT]: '草稿',
+  [SPECIAL_OFFER_STATUS.PENDING_PUBLISH]: '待发布',
+  [SPECIAL_OFFER_STATUS.PUBLISHED]: '已发布',
+  [SPECIAL_OFFER_STATUS.ENDED]: '已结束',
+  [SPECIAL_OFFER_STATUS.ARCHIVED]: '已删除',
+  草稿: '草稿',
+  待发布: '待发布',
+  已发布: '已发布',
+  已结束: '已结束',
+  pending_publish: '待发布'
+}
+
+/** 列表筛选 / 表单可选状态（不含已删除） */
+export const SPECIAL_OFFER_STATUS_OPTIONS = [
+  { value: SPECIAL_OFFER_STATUS.DRAFT, label: '草稿' },
+  { value: SPECIAL_OFFER_STATUS.PENDING_PUBLISH, label: '待发布' },
+  { value: SPECIAL_OFFER_STATUS.PUBLISHED, label: '已发布' },
+  { value: SPECIAL_OFFER_STATUS.ENDED, label: '已结束' }
+]
+
+const SPECIAL_OFFER_TARGET_TYPE_LEGACY: Record<string, string> = {
+  all: SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS,
+  community: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_COMMUNITY,
+  merchant: SPECIAL_OFFER_TARGET_TYPE.SPECIFIC_MERCHANT
+}
+
+const SPECIAL_OFFER_STATUS_ALIASES: Record<string, string> = {
+  草稿: SPECIAL_OFFER_STATUS.DRAFT,
+  待发布: SPECIAL_OFFER_STATUS.PENDING_PUBLISH,
+  已发布: SPECIAL_OFFER_STATUS.PUBLISHED,
+  已结束: SPECIAL_OFFER_STATUS.ENDED,
+  pending_publish: SPECIAL_OFFER_STATUS.PENDING_PUBLISH
+}
+
+export function normalizeSpecialOfferTargetType(value?: string) {
+  if (!value) return SPECIAL_OFFER_TARGET_TYPE.ALL_RESIDENTS
+  if (SPECIAL_OFFER_TARGET_TYPE_LABEL[value]) return value
+  return SPECIAL_OFFER_TARGET_TYPE_LEGACY[value] || value
+}
+
+export function normalizeSpecialOfferStatus(value?: string) {
+  if (!value) return SPECIAL_OFFER_STATUS.DRAFT
+  if (Object.values(SPECIAL_OFFER_STATUS).includes(value as (typeof SPECIAL_OFFER_STATUS)[keyof typeof SPECIAL_OFFER_STATUS])) {
+    return value
+  }
+  return SPECIAL_OFFER_STATUS_ALIASES[value] || value
+}
+
+export function normalizeSpecialOfferStatusClass(status?: string) {
+  return normalizeSpecialOfferStatus(status)
+}
+
+export function isSpecialOfferArchived(status?: string) {
+  const normalized = normalizeSpecialOfferStatus(status)
+  return normalized === SPECIAL_OFFER_STATUS.ARCHIVED
+}
+
+export function isSpecialOfferEnded(status?: string) {
+  const normalized = normalizeSpecialOfferStatus(status)
+  return normalized === SPECIAL_OFFER_STATUS.ENDED
 }
 
 export const WITHDRAWAL_AUDIT_STATUS = {
