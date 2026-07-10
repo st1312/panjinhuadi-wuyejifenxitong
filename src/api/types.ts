@@ -198,6 +198,7 @@ export interface MerchantUpdatePayload {
   deliveryFee?: number | string
   freeDeliveryThreshold?: number | string
   rankOrder?: number
+  merchantLevel?: string
 }
 
 export interface PlatformMerchantLinkedProperty {
@@ -795,6 +796,7 @@ export interface MerchantPointPurchaseItem {
   merchantId?: string
   merchantName?: string
   pointAmount?: number
+  remainingPoints?: number
   payAmount?: number
   status?: string
   auditRemark?: string
@@ -808,7 +810,6 @@ export interface MerchantPointPurchasePayload {
 }
 
 export interface MerchantPointGrantPayload {
-  purchaseId: string
   residentId: string
   pointAmount: number
   description?: string

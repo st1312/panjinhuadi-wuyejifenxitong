@@ -72,30 +72,31 @@
               <td>{{ item.rankOrder ?? '—' }}</td>
               <td class="timeCell">{{ item.createdAt || '—' }}</td>
               <td class="actions">
-                <button class="btnLink" @click="openDetail(item.id)">详情</button>
-                <button
-                  v-if="canEdit(item)"
-                  class="btnLink"
-                  @click="openEdit(item.id)"
-                >
-                  编辑
-                </button>
-                <button
-                  v-if="item.auditStatus === MERCHANT_AUDIT_STATUS.PENDING"
-                  class="btnPrimarySm"
-                  @click="openAudit(item)"
-                >
-                  审核
-                </button>
-                <button
-                  v-else-if="canSetOfficial(item)"
-                  class="btnGhostSm"
-                  :disabled="upgradingId === item.id"
-                  @click="setOfficial(item)"
-                >
-                  设为官方认证
-                </button>
-                <span v-else-if="item.merchantLevel === MERCHANT_LEVEL.OFFICIAL_CERTIFIED" class="badge">官方推荐</span>
+                <div class="actionsInner">
+                  <button type="button" class="btnLink" @click="openDetail(item.id)">详情</button>
+                  <button
+                    v-if="canEdit(item)"
+                    type="button"
+                    class="btnLink"
+                    @click="openEdit(item.id)"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    v-if="item.auditStatus === MERCHANT_AUDIT_STATUS.PENDING"
+                    type="button"
+                    class="btnPrimarySm"
+                    @click="openAudit(item)"
+                  >
+                    审核
+                  </button>
+                  <span
+                    v-if="item.merchantLevel === MERCHANT_LEVEL.OFFICIAL_CERTIFIED"
+                    class="badge"
+                  >
+                    官方推荐
+                  </span>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -204,12 +205,12 @@
       </div>
 
       <div v-if="auditTarget" class="modalOverlay" @click.self="closeAudit">
-        <div class="modal">
+        <div class="modal modalWide">
           <div class="modalHeader">
             <h3 class="modalTitle">审核商家「{{ auditTarget.name }}」</h3>
             <button class="modalClose" @click="closeAudit">&times;</button>
           </div>
-          <div class="modalBody">
+          <form class="modalBody" @submit.prevent="submitAudit">
             <div class="field">
               <label class="label">审核结果</label>
               <select v-model="auditForm.auditResult" class="input">
@@ -217,30 +218,80 @@
                 <option :value="AUDIT_RESULT.REJECTED">拒绝</option>
               </select>
             </div>
-            <div v-if="auditForm.auditResult === AUDIT_RESULT.APPROVED" class="field">
-              <label class="label">商家等级</label>
-              <select v-model="auditForm.merchantLevel" class="input">
-                <option v-for="opt in MERCHANT_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
-            </div>
             <div v-if="auditForm.auditResult === AUDIT_RESULT.REJECTED" class="field">
               <label class="label">拒绝原因</label>
-              <textarea v-model="auditForm.rejectReason" class="textarea" rows="3" />
+              <textarea
+                v-model="auditForm.rejectReason"
+                class="textarea"
+                rows="3"
+                maxlength="200"
+                placeholder="请填写拒绝原因"
+                required
+              />
             </div>
+            <template v-if="auditForm.auditResult === AUDIT_RESULT.APPROVED">
+              <div class="field">
+                <label class="label">商家等级</label>
+                <select v-model="auditForm.merchantLevel" class="input">
+                  <option v-for="opt in MERCHANT_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">分类</label>
+                <input
+                  v-model="auditForm.category"
+                  type="text"
+                  class="input"
+                  maxlength="50"
+                  placeholder="如：外卖"
+                />
+              </div>
+              <div class="field">
+                <label class="label">营业时间</label>
+                <input
+                  v-model="auditForm.businessHours"
+                  type="text"
+                  class="input"
+                  maxlength="50"
+                  placeholder="如：08:00-22:00"
+                />
+              </div>
+              <div class="fieldRow">
+                <div class="field">
+                  <label class="label">配送费</label>
+                  <input v-model="auditForm.deliveryFee" type="text" class="input" placeholder="如：0.30" />
+                </div>
+                <div class="field">
+                  <label class="label">满额免配送费</label>
+                  <input
+                    v-model="auditForm.freeDeliveryThreshold"
+                    type="text"
+                    class="input"
+                    placeholder="如：50.00"
+                  />
+                </div>
+              </div>
+            </template>
             <div class="field">
-              <label class="label">备注（可选）</label>
-              <input v-model="auditForm.remark" class="input" />
+              <label class="label">备注（选填）</label>
+              <textarea
+                v-model="auditForm.remark"
+                class="textarea"
+                rows="2"
+                maxlength="200"
+                placeholder="审核备注"
+              />
             </div>
             <p v-if="auditError" class="error">{{ auditError }}</p>
-          </div>
-          <div class="modalFooter">
-            <button class="btnGhost" @click="closeAudit">取消</button>
-            <button class="btnPrimary" :disabled="auditing" @click="submitAudit">
-              {{ auditing ? '提交中...' : '提交审核' }}
-            </button>
-          </div>
+            <div class="modalFooter">
+              <button type="button" class="btnGhost" @click="closeAudit">取消</button>
+              <button type="submit" class="btnPrimary" :disabled="auditing">
+                {{ auditing ? '提交中...' : '提交审核' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </Teleport>
@@ -250,7 +301,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { merchantApi } from '../../api/services'
-import type { MerchantItem, MerchantUpdatePayload } from '../../api/types'
+import type { MerchantAuditPayload, MerchantItem, MerchantUpdatePayload } from '../../api/types'
 import { ApiError } from '../../api/request'
 import {
   AUDIT_RESULT,
@@ -278,7 +329,6 @@ const levelFilter = ref('')
 const page = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
-const upgradingId = ref('')
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
@@ -308,7 +358,11 @@ const auditing = ref(false)
 const auditError = ref('')
 const auditForm = reactive({
   auditResult: AUDIT_RESULT.APPROVED,
-  merchantLevel: MERCHANT_LEVEL.OFFICIAL_CERTIFIED,
+  merchantLevel: MERCHANT_LEVEL.PROPERTY_CERTIFIED,
+  category: '',
+  businessHours: '',
+  deliveryFee: '',
+  freeDeliveryThreshold: '',
   rejectReason: '',
   remark: ''
 })
@@ -400,13 +454,6 @@ async function load(pageNo = 1) {
 
 function canEdit(item: MerchantItem) {
   return item.auditStatus === MERCHANT_AUDIT_STATUS.APPROVED
-}
-
-function canSetOfficial(item: MerchantItem) {
-  return (
-    item.auditStatus === MERCHANT_AUDIT_STATUS.APPROVED &&
-    item.merchantLevel !== MERCHANT_LEVEL.OFFICIAL_CERTIFIED
-  )
 }
 
 function switchTab(next: TabKey) {
@@ -514,12 +561,47 @@ async function submitEdit() {
   }
 }
 
-function openAudit(item: MerchantItem) {
-  auditTarget.value = item
+function applyMerchantToAuditForm(merchant: MerchantItem) {
   auditForm.auditResult = AUDIT_RESULT.APPROVED
-  auditForm.merchantLevel = MERCHANT_LEVEL.OFFICIAL_CERTIFIED
+  auditForm.merchantLevel = merchant.merchantLevel || MERCHANT_LEVEL.PROPERTY_CERTIFIED
+  auditForm.category = merchant.category || ''
+  auditForm.businessHours = merchant.businessHours || ''
+  auditForm.deliveryFee = merchant.deliveryFee != null ? String(merchant.deliveryFee) : ''
+  auditForm.freeDeliveryThreshold = merchant.freeDeliveryThreshold != null
+    ? String(merchant.freeDeliveryThreshold)
+    : ''
   auditForm.rejectReason = ''
   auditForm.remark = ''
+}
+
+function buildAuditPayload(): MerchantAuditPayload {
+  const payload: MerchantAuditPayload = {
+    auditResult: auditForm.auditResult
+  }
+  if (auditForm.remark.trim()) {
+    payload.remark = auditForm.remark.trim()
+  }
+  if (auditForm.auditResult === AUDIT_RESULT.REJECTED) {
+    payload.rejectReason = auditForm.rejectReason.trim()
+  } else {
+    payload.merchantLevel = auditForm.merchantLevel
+    if (auditForm.category.trim()) payload.category = auditForm.category.trim()
+    if (auditForm.businessHours.trim()) payload.businessHours = auditForm.businessHours.trim()
+    if (auditForm.deliveryFee.trim()) payload.deliveryFee = auditForm.deliveryFee.trim()
+    if (auditForm.freeDeliveryThreshold.trim()) {
+      payload.freeDeliveryThreshold = auditForm.freeDeliveryThreshold.trim()
+    }
+  }
+  return payload
+}
+
+function openAudit(item: MerchantItem) {
+  if (item.auditStatus !== MERCHANT_AUDIT_STATUS.PENDING) {
+    error.value = '该商家已审核，不可重复操作'
+    return
+  }
+  auditTarget.value = item
+  applyMerchantToAuditForm(item)
   auditError.value = ''
 }
 
@@ -530,6 +612,10 @@ function closeAudit() {
 
 async function submitAudit() {
   if (!auditTarget.value) return
+  if (auditTarget.value.auditStatus !== MERCHANT_AUDIT_STATUS.PENDING) {
+    auditError.value = '该商家已审核，不可重复操作'
+    return
+  }
   if (auditForm.auditResult === AUDIT_RESULT.REJECTED && !auditForm.rejectReason.trim()) {
     auditError.value = '请填写拒绝原因'
     return
@@ -537,36 +623,13 @@ async function submitAudit() {
   auditing.value = true
   auditError.value = ''
   try {
-    await merchantApi.audit(auditTarget.value.id, {
-      auditResult: auditForm.auditResult,
-      merchantLevel:
-        auditForm.auditResult === AUDIT_RESULT.APPROVED ? auditForm.merchantLevel : undefined,
-      rejectReason:
-        auditForm.auditResult === AUDIT_RESULT.REJECTED ? auditForm.rejectReason.trim() : undefined,
-      remark: auditForm.remark.trim() || undefined
-    })
+    await merchantApi.audit(auditTarget.value.id, buildAuditPayload())
     closeAudit()
     await load(page.value)
   } catch (e) {
     auditError.value = e instanceof ApiError ? e.message : '审核失败，请确认是否有商家审核权限'
   } finally {
     auditing.value = false
-  }
-}
-
-async function setOfficial(item: MerchantItem) {
-  upgradingId.value = item.id
-  try {
-    await merchantApi.audit(item.id, {
-      auditResult: AUDIT_RESULT.APPROVED,
-      merchantLevel: MERCHANT_LEVEL.OFFICIAL_CERTIFIED,
-      remark: '统筹设为官方认证'
-    })
-    await load(page.value)
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '设置官方认证失败'
-  } finally {
-    upgradingId.value = ''
   }
 }
 
@@ -597,17 +660,36 @@ onMounted(async () => {
 .panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
-.table th, .table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f3; text-align: left; vertical-align: middle; }
-.table th { color: #8c8c9a; font-weight: 500; white-space: nowrap; }
+.table th, .table td { padding: 12px 10px; text-align: left; vertical-align: middle; }
+.table th { color: #8c8c9a; font-weight: 500; white-space: nowrap; border-bottom: 1px solid #f0f0f3; }
+.table tbody tr { border-bottom: 1px solid #f0f0f3; }
+.table tbody td { border-bottom: none; }
 .nameCell { max-width: 160px; }
 .timeCell { font-size: 13px; color: #5c5c66; white-space: nowrap; }
 .coverThumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #f5f5f7; }
 .coverPlaceholder { color: #c0c0c8; }
-.actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.btnLink { border: none; background: none; color: #5c5c9e; cursor: pointer; font-size: 13px; padding: 0; }
-.btnPrimarySm { padding: 6px 12px; border-radius: 6px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; font-size: 13px; }
-.btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 13px; }
-.badge { font-size: 12px; color: #5c5c9e; background: #f0f0ff; padding: 4px 8px; border-radius: 4px; }
+.actions { height: 1px; }
+.actionsInner {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.btnLink {
+  border: none;
+  background: none;
+  color: #5c5c9e;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 0;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.btnPrimarySm { padding: 6px 12px; border-radius: 6px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; font-size: 13px; flex-shrink: 0; white-space: nowrap; }
+.btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 13px; flex-shrink: 0; white-space: nowrap; }
+.badge { font-size: 12px; color: #5c5c9e; background: #f0f0ff; padding: 4px 8px; border-radius: 4px; flex-shrink: 0; white-space: nowrap; }
 .loading, .empty, .error { font-size: 14px; color: #8c8c9a; padding: 12px 0; }
 .error { color: #e05c5c; }
 .pager { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 14px; }

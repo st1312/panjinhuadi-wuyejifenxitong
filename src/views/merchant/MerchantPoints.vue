@@ -27,23 +27,11 @@
       <div class="card">
         <h3 class="cardTitle">赠送积分</h3>
         <p v-if="grantMsg" :class="grantMsgType">{{ grantMsg }}</p>
-        <div class="field">
-          <label class="label">购买记录</label>
-          <select
-            v-model="grantForm.purchaseId"
-            class="input"
-            :disabled="approvedLoading"
-          >
-            <option value="">请选择已通过审核的购买记录</option>
-            <option v-for="item in approvedPurchases" :key="item.id" :value="item.id">
-              {{ formatPurchaseOption(item) }}
-            </option>
-          </select>
-          <p v-if="selectedPurchase" class="hint">
-            该记录共 {{ selectedPurchase.pointAmount ?? 0 }} 积分，支付 ¥{{ formatMoney(selectedPurchase.payAmount) }}
-          </p>
-          <p v-else-if="!approvedLoading && !approvedPurchases.length" class="hint warn">
-            暂无可用购买记录，请先提交购买并等待审核通过
+        <div class="balanceBox">
+          <span class="balanceLabel">可用积分余额</span>
+          <span class="balanceValue">{{ approvedLoading ? '—' : totalBalance }}</span>
+          <p v-if="!approvedLoading && !totalBalance" class="hint warn">
+            暂无可用积分，请先提交购买并等待审核通过
           </p>
         </div>
         <div class="field">
@@ -72,7 +60,7 @@
             v-model.number="grantForm.pointAmount"
             type="number"
             min="1"
-            :max="selectedPurchase?.pointAmount"
+            :max="totalBalance || undefined"
             class="input"
           />
         </div>
@@ -82,7 +70,7 @@
         </div>
         <button
           class="btnPrimary"
-          :disabled="grantSubmitting || !approvedPurchases.length || !orderOptions.length"
+          :disabled="grantSubmitting || !totalBalance || !orderOptions.length"
           @click="submitGrant"
         >
           {{ grantSubmitting ? '赠送中...' : '确认赠送' }}
@@ -108,6 +96,7 @@
             <th>记录 ID</th>
             <th>时间</th>
             <th>积分</th>
+            <th>剩余积分</th>
             <th>金额</th>
             <th>状态</th>
             <th>备注</th>
@@ -118,6 +107,7 @@
             <td class="mono">{{ item.id }}</td>
             <td>{{ item.createdAt || '—' }}</td>
             <td>{{ item.pointAmount ?? '—' }}</td>
+            <td>{{ item.remainingPoints ?? '—' }}</td>
             <td>¥{{ formatMoney(item.payAmount) }}</td>
             <td>{{ getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, item.status) }}</td>
             <td>{{ item.auditRemark || '—' }}</td>
@@ -158,14 +148,13 @@ const grantMsgType = ref('success')
 
 const purchaseForm = reactive({ pointAmount: 1000, payAmount: 100 })
 const grantForm = reactive({
-  purchaseId: '',
   orderId: '',
   pointAmount: 50,
   description: '消费赠送'
 })
 
-const selectedPurchase = computed(() =>
-  approvedPurchases.value.find((item) => item.id === grantForm.purchaseId)
+const totalBalance = computed(() =>
+  approvedPurchases.value.reduce((sum, item) => sum + (item.remainingPoints ?? 0), 0)
 )
 
 const selectedOrder = computed(() =>
@@ -175,13 +164,6 @@ const selectedOrder = computed(() =>
 function formatMoney(value?: number) {
   if (value === undefined || value === null) return '0.00'
   return Number(value).toFixed(2)
-}
-
-function formatPurchaseOption(item: MerchantPointPurchaseItem) {
-  const points = item.pointAmount ?? 0
-  const amount = formatMoney(item.payAmount)
-  const time = item.createdAt || item.auditedAt || ''
-  return `${points} 积分 · ¥${amount}${time ? ` · ${time}` : ''}`
 }
 
 function formatOrderOption(order: OrderItem) {
@@ -220,9 +202,6 @@ async function loadApprovedPurchases() {
       sort: '-createdAt'
     })
     approvedPurchases.value = res.list || []
-    if (grantForm.purchaseId && !approvedPurchases.value.some((item) => item.id === grantForm.purchaseId)) {
-      grantForm.purchaseId = ''
-    }
   } catch {
     approvedPurchases.value = []
   } finally {
@@ -277,8 +256,8 @@ async function submitPurchase() {
 }
 
 async function submitGrant() {
-  if (!grantForm.purchaseId) {
-    grantMsg.value = '请选择购买记录'
+  if (!totalBalance.value) {
+    grantMsg.value = '暂无可用积分余额'
     grantMsgType.value = 'error'
     return
   }
@@ -292,8 +271,8 @@ async function submitGrant() {
     grantMsgType.value = 'error'
     return
   }
-  if (selectedPurchase.value?.pointAmount != null && grantForm.pointAmount > selectedPurchase.value.pointAmount) {
-    grantMsg.value = `赠送积分不能超过该记录购买的 ${selectedPurchase.value.pointAmount} 积分`
+  if (grantForm.pointAmount > totalBalance.value) {
+    grantMsg.value = `赠送积分不能超过可用余额 ${totalBalance.value}`
     grantMsgType.value = 'error'
     return
   }
@@ -301,7 +280,6 @@ async function submitGrant() {
   grantMsg.value = ''
   try {
     await merchantPortalApi.grantPoints({
-      purchaseId: grantForm.purchaseId,
       residentId: selectedOrder.value.residentId,
       pointAmount: grantForm.pointAmount,
       description: grantForm.description.trim() || undefined
@@ -337,6 +315,9 @@ onMounted(reloadAll)
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
 .success { color: #3aaf7d; font-size: 13px; margin-bottom: 12px; }
 .error { color: #e05c5c; font-size: 13px; margin-bottom: 12px; }
+.balanceBox { margin-bottom: 16px; padding: 14px 16px; background: #f7f7fb; border-radius: 8px; }
+.balanceLabel { display: block; font-size: 13px; color: #5c5c66; margin-bottom: 6px; }
+.balanceValue { font-size: 28px; font-weight: 600; color: #5c5c9e; }
 .hint { font-size: 12px; color: #8c8c9a; margin-top: 6px; }
 .hint.warn { color: #d48806; }
 .mono { font-family: ui-monospace, monospace; font-size: 12px; }
