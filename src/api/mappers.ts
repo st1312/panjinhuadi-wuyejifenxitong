@@ -313,21 +313,23 @@ export function mapProfitSpaceDisplay(data: MerchantProfitSpace | null) {
   const metrics = data?.metrics || {}
   const breakdown = data?.breakdown || {}
   const revenue = metrics.totalRevenue ?? 0
+  const commission = metrics.totalCommission ?? 0
   const deliveryFee = metrics.totalDeliveryFee ?? 0
   const pointCost = metrics.totalPointCost ?? 0
   const coinCost = metrics.totalCoinCost ?? 0
   const exchangeCost = pointCost + coinCost
-  const netProfit = metrics.netProfit ?? Math.max(revenue - deliveryFee - pointCost - coinCost, 0)
+  const netProfit = metrics.netProfit ?? Math.max(revenue - commission - deliveryFee - pointCost - coinCost, 0)
   const profitMargin = metrics.profitMargin ?? (revenue > 0 ? netProfit / revenue : 0)
 
-  const propertyShare = breakdown.propertyShare ?? 0
+  const propertyShare = breakdown.propertyShare ?? 0    // 已为百分比（如 2.945）
   const coordinatorShare = breakdown.coordinatorShare ?? 0
   const sectorLeaderShare = breakdown.sectorLeaderShare ?? 0
   const individualLeaderShare = breakdown.individualLeaderShare ?? 0
   const platformShare = breakdown.platformShare ?? 0
 
   const pctOfRevenue = (value: number) => (revenue > 0 ? formatPercent(value / revenue) : 0)
-  const pctOfProfit = (value: number) => (netProfit > 0 ? formatPercent(value / netProfit) : 0)
+  const sharePercent = (pct: number) => `${pct}%`
+  const shareAmount = (pct: number) => `¥${formatMoney((netProfit * pct) / 100)}`
 
   const periodLabels: Record<string, string> = {
     week: '本周',
@@ -339,10 +341,10 @@ export function mapProfitSpaceDisplay(data: MerchantProfitSpace | null) {
   const dateRange = data?.startDate && data?.endDate ? `${data.startDate} ~ ${data.endDate}` : ''
   const periodLabel = [periodPrefix, dateRange].filter(Boolean).join(' · ')
 
-  const mapShare = (label: string, amount: number) => ({
+  const mapShare = (label: string, pct: number) => ({
     label,
-    percent: `${pctOfProfit(amount)}%`,
-    amount: `¥${formatMoney(amount)}`
+    percent: sharePercent(pct),       // API 已返回百分比，直接展示
+    amount: shareAmount(pct)          // 根据百分比反算实际金额
   })
 
   return {
@@ -351,6 +353,9 @@ export function mapProfitSpaceDisplay(data: MerchantProfitSpace | null) {
     periodLabel,
     totalOrders: metrics.totalOrders ?? 0,
     totalCommission: metrics.totalCommission,
+    commission: `¥${formatMoney(commission)}`,
+    commissionRate: `¥${formatMoney(commission)}`,
+    commissionPct: pctOfRevenue(commission),
     revenue: `¥${formatMoney(revenue)}`,
     deliveryFee: `${pctOfRevenue(deliveryFee)}%`,
     deliveryFeeAmount: `¥${formatMoney(deliveryFee)}`,
@@ -358,10 +363,10 @@ export function mapProfitSpaceDisplay(data: MerchantProfitSpace | null) {
     exchangeCostDetail: `积分 ¥${formatMoney(pointCost)} + 物业币 ¥${formatMoney(coinCost)}`,
     profitSpace: `${formatPercent(profitMargin)}%`,
     profitSpaceAmount: `¥${formatMoney(netProfit)}`,
-    propertyShare: `${pctOfProfit(propertyShare)}%`,
-    propertyShareAmount: `¥${formatMoney(propertyShare)}`,
-    coordinatorShare: `${pctOfProfit(coordinatorShare)}%`,
-    coordinatorShareAmount: `¥${formatMoney(coordinatorShare)}`,
+    propertyShare: sharePercent(propertyShare),
+    propertyShareAmount: shareAmount(propertyShare),
+    coordinatorShare: sharePercent(coordinatorShare),
+    coordinatorShareAmount: shareAmount(coordinatorShare),
     shareBreakdown: [
       mapShare('物业收益', propertyShare),
       mapShare('统筹收益', coordinatorShare),

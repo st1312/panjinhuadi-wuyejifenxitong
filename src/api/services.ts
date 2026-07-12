@@ -587,6 +587,33 @@ export const merchantPortalApi = {
     })
   },
 
+  /** 商家手动发送配送任务（POST /orders/{id}/send-delivery）。
+   *  适用场景：历史已支付但当时未自动生成配送单的订单。
+   *  若订单已存在配送单，后端会返回「该订单已有配送单」错误。 */
+  sendDelivery(id: string) {
+    return request<{
+      orderId?: string
+      deliveryId?: string
+      status?: string
+      sentAt?: string
+    }>(`/orders/${id}/send-delivery`, { method: 'POST' })
+  },
+
+  /** 物业指派配送（POST /deliveries/{id}/assign） */
+  assignDelivery(deliveryId: string, courierId: string) {
+    return request<{ deliveryId?: string; courierId?: string; status?: string }>(
+      `/deliveries/${deliveryId}/assign`,
+      { method: 'POST', body: JSON.stringify({ courierId }) }
+    )
+  },
+
+  /** 获取可用的快递员列表 */
+  couriers(params: { page?: number; pageSize?: number } = {}) {
+    return request<PageResult<DeliveryTaskItem>>(
+      `/deliveries/couriers${buildQuery(params)}`
+    )
+  },
+
   products(params: {
     page?: number
     pageSize?: number

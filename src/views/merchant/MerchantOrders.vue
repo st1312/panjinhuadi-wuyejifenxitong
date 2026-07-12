@@ -33,11 +33,11 @@
     <div class="panel">
       <div v-if="loading" class="loading">加载中...</div>
       <p v-else-if="error" class="error">{{ error }}</p>
+      <p v-else-if="success" class="success">{{ success }}</p>
       <template v-else>
         <table v-if="orders.length" class="table">
           <thead>
             <tr>
-              <th>订单号</th>
               <th>顾客</th>
               <th>商品</th>
               <th>金额</th>
@@ -50,7 +50,6 @@
           </thead>
           <tbody>
             <tr v-for="order in orders" :key="order.id">
-              <td class="mono">{{ order.orderNo || order.id }}</td>
               <td>{{ order.residentName || '—' }}</td>
               <td class="itemsCell"><span class="itemsText">{{ itemsSummary(order) }}</span></td>
               <td class="amountCell">
@@ -69,12 +68,20 @@
                 <div class="actionsInner">
                   <button class="linkBtn" @click="openDetail(order.id)">详情</button>
                   <button
-                    v-if="canDeliver(order)"
                     class="linkBtn"
-                    :disabled="actionId === order.id"
-                    @click="markDelivering(order.id)"
+                    :class="{ greyed: !canSendDelivery(order) || hasCourier(order) }"
+                    :disabled="sendId === order.id || !canSendDelivery(order) || hasCourier(order)"
+                    @click="sendDeliveryTask(order.id)"
                   >
-                    开始配送
+                    {{ sendId === order.id ? '发送中...' : '发送任务' }}
+                  </button>
+                  <button
+                    class="linkBtn"
+                    :class="{ greyed: !canDeliver(order) || hasCourier(order) }"
+                    :disabled="actionId === order.id || !canDeliver(order) || hasCourier(order)"
+                    @click="openAssign(order.id, order.deliveryId ?? undefined)"
+                  >
+                    {{ actionId === order.id ? '处理中...' : '开始配送' }}
                   </button>
                 </div>
               </td>
@@ -178,9 +185,59 @@
               </section>
             </template>
           </div>
-          <div v-if="detail && canDeliver(detail)" class="modalFooter">
-            <button class="btnPrimary" :disabled="actionId === detail.id" @click="markDeliveringFromDetail">
+          <div v-if="detail" class="modalFooter">
+            <button
+              class="btnPrimary"
+              :class="{ greyed: !canSendDelivery(detail) || hasCourier(detail) }"
+              :disabled="sendId === detail.id || !canSendDelivery(detail) || hasCourier(detail)"
+              @click="sendDeliveryFromDetail"
+            >
+              {{ sendId === detail.id ? '发送中...' : '发送配送任务' }}
+            </button>
+            <button
+              class="btnPrimary"
+              :class="{ greyed: !canDeliver(detail) || hasCourier(detail) }"
+              :disabled="actionId === detail.id || !canDeliver(detail) || hasCourier(detail)"
+              @click="markDeliveringFromDetail"
+            >
               {{ actionId === detail.id ? '处理中...' : '开始配送' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 快递员指配弹窗 -->
+      <div v-if="assignOpen" class="modalOverlay" @click.self="closeAssign">
+        <div class="modal assignModal">
+          <div class="modalHeader">
+            <h3 class="modalTitle">选择配送员</h3>
+            <button class="modalClose" @click="closeAssign">&times;</button>
+          </div>
+          <div class="modalBody">
+            <div v-if="assignLoading" class="loading">加载配送员列表...</div>
+            <p v-else-if="assignError" class="error">{{ assignError }}</p>
+            <div v-else-if="couriers.length === 0" class="empty">暂无可用配送员</div>
+            <ul v-else class="courierList">
+              <li
+                v-for="courier in couriers"
+                :key="courier.id"
+                class="courierItem"
+                :class="{ selected: selectedCourierId === (courier.courierId || courier.id) }"
+                @click="selectedCourierId = courier.courierId || courier.id"
+              >
+                <span class="courierRadio" :class="{ checked: selectedCourierId === (courier.courierId || courier.id) }" />
+                <span class="courierName">{{ courier.courierName || courier.id }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="modalFooter">
+            <button class="btnGhost" @click="closeAssign">取消</button>
+            <button
+              class="btnPrimary"
+              :disabled="!selectedCourierId || actionId === (assignTarget?.orderId || '')"
+              @click="confirmAssign"
+            >
+              {{ actionId === (assignTarget?.orderId || '') ? '指派中...' : '确认指派' }}
             </button>
           </div>
         </div>
@@ -192,7 +249,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { merchantPortalApi } from '../../api/services'
-import type { OrderItem } from '../../api/types'
+import type { DeliveryTaskItem, OrderItem } from '../../api/types'
 import { ApiError } from '../../api/request'
 import {
   getEnumLabel,
@@ -206,16 +263,26 @@ const ORDER_STATUS_OPTIONS = Object.entries(ORDER_STATUS_LABEL).map(([value, lab
 const orders = ref<OrderItem[]>([])
 const loading = ref(false)
 const error = ref('')
+const success = ref('')
 const page = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
 const actionId = ref('')
+const sendId = ref('')
 const filters = reactive({ orderStatus: '', startDate: '', endDate: '' })
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailError = ref('')
 const detail = ref<OrderItem | null>(null)
+
+/** 快递员指配弹窗 */
+const assignOpen = ref(false)
+const assignLoading = ref(false)
+const assignError = ref('')
+const couriers = ref<DeliveryTaskItem[]>([])
+const selectedCourierId = ref('')
+const assignTarget = ref<{ orderId: string; deliveryId: string } | null>(null)
 
 function formatMoney(value?: number | null) {
   if (value === undefined || value === null) return '0.00'
@@ -260,13 +327,27 @@ function paymentSummary(order: OrderItem) {
   return parts.filter((p) => p && p !== '—').join(' / ') || '—'
 }
 
+/** 已支付时可打开快递员指配弹窗 */
 function canDeliver(order: OrderItem) {
   return orderStatus(order) === ORDER_STATUS.PAID
+}
+
+/** 商家手动发送配送任务：
+ *  适用场景为「已支付但尚无配送单」的订单（多用于历史数据或支付未自动建单的兜底）。
+ *  若后端 pay 流程已自动创建配送单，此处一般不会触发按钮。 */
+function canSendDelivery(order: OrderItem) {
+  return orderStatus(order) === ORDER_STATUS.PAID && !order.deliveryId
+}
+
+/** 订单已有配送员（已有人接单），按钮显示为灰色不可点击 */
+function hasCourier(order: OrderItem) {
+  return !!(order.courierId || order.courierName)
 }
 
 async function load(pageNo = 1) {
   loading.value = true
   error.value = ''
+  success.value = ''
   try {
     const res = await merchantPortalApi.orders({
       page: pageNo,
@@ -315,24 +396,96 @@ function closeDetail() {
   detailError.value = ''
 }
 
-async function markDelivering(id: string) {
-  actionId.value = id
+/** 打开快递员指配弹窗 */
+async function openAssign(orderId: string, deliveryId?: string) {
+  // 列表行可能没有 deliveryId，从详情补查
+  if (!deliveryId) {
+    try {
+      const order = await merchantPortalApi.getOrder(orderId)
+      deliveryId = order.deliveryId || undefined
+    } catch { /* 后续弹窗显示错误 */ }
+  }
+  if (!deliveryId) {
+    error.value = '该订单暂无配送单，请先发送配送任务'
+    return
+  }
+  assignTarget.value = { orderId, deliveryId }
+  selectedCourierId.value = ''
+  assignError.value = ''
+  assignOpen.value = true
+  assignLoading.value = true
+  couriers.value = []
   try {
-    await merchantPortalApi.updateOrderStatus(id, ORDER_STATUS.DELIVERING)
-    await load(page.value)
-    if (detail.value?.id === id) {
-      detail.value = await merchantPortalApi.getOrder(id)
+    const res = await merchantPortalApi.couriers({ page: 1, pageSize: 50 })
+    couriers.value = res.list || []
+    if (couriers.value.length === 1) {
+      selectedCourierId.value = couriers.value[0].courierId || couriers.value[0].id
     }
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '状态更新失败'
+    assignError.value = e instanceof ApiError ? e.message : '获取快递员列表失败'
+  } finally {
+    assignLoading.value = false
+  }
+}
+
+function closeAssign() {
+  assignOpen.value = false
+  assignTarget.value = null
+  selectedCourierId.value = ''
+  assignError.value = ''
+}
+
+/** 确认指派配送员 */
+async function confirmAssign() {
+  if (!assignTarget.value || !selectedCourierId.value) return
+  const { orderId, deliveryId } = assignTarget.value
+  actionId.value = orderId
+  assignError.value = ''
+  try {
+    await merchantPortalApi.assignDelivery(deliveryId, selectedCourierId.value)
+    await merchantPortalApi.updateOrderStatus(orderId, ORDER_STATUS.DELIVERING)
+    success.value = '配送员已指派'
+    await load(page.value)
+    if (detail.value?.id === orderId) {
+      detail.value = await merchantPortalApi.getOrder(orderId)
+    }
+    closeAssign()
+  } catch (e) {
+    assignError.value = e instanceof ApiError ? e.message : '指派配送员失败'
   } finally {
     actionId.value = ''
   }
 }
 
 async function markDeliveringFromDetail() {
+  if (!detail.value || !detail.value.deliveryId) return
+  openAssign(detail.value.id, detail.value.deliveryId)
+}
+
+async function sendDeliveryTask(id: string) {
+  if (sendId.value) return
+  sendId.value = id
+  error.value = ''
+  success.value = ''
+  try {
+    const res = await merchantPortalApi.sendDelivery(id)
+    success.value = res?.deliveryId
+      ? `配送任务已发送（单号 ${res.deliveryId}）`
+      : '配送任务已发送'
+    await load(page.value)
+    if (detail.value?.id === id) {
+      detail.value = await merchantPortalApi.getOrder(id)
+    }
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '发送配送任务失败'
+  } finally {
+    sendId.value = ''
+  }
+}
+
+async function sendDeliveryFromDetail() {
   if (!detail.value) return
-  await markDelivering(detail.value.id)
+  await sendDeliveryTask(detail.value.id)
 }
 
 onMounted(() => load(1))
@@ -380,12 +533,13 @@ onMounted(() => load(1))
 }
 .btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 14px; }
 .sep { color: #8c8c9a; font-size: 13px; }
-.panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow-x: auto; }
-.loading, .empty, .error { text-align: center; color: #8c8c9a; font-size: 14px; padding: 16px 0; }
+.panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.loading, .empty, .error, .success { text-align: center; color: #8c8c9a; font-size: 14px; padding: 16px 0; }
 .error { color: #e05c5c; }
-.table { width: 100%; border-collapse: collapse; min-width: 980px; table-layout: fixed; }
+.success { color: #389e0d; }
+.table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .table th, .table td {
-  padding: 10px;
+  padding: 8px 6px;
   text-align: left;
   font-size: 13px;
   vertical-align: middle;
@@ -394,12 +548,14 @@ onMounted(() => load(1))
 .table th { color: #8c8c9a; font-weight: 500; border-bottom: 1px solid #f0f0f3; }
 .table tbody tr { border-bottom: 1px solid #f0f0f3; }
 .table tbody td { border-bottom: none; }
-.table th:nth-child(1), .table td:nth-child(1) { width: 130px; }
-.table th:nth-child(3), .table td:nth-child(3) { width: 180px; }
+.table th:nth-child(1), .table td:nth-child(1) { width: 80px; }
+.table th:nth-child(2), .table td:nth-child(2) { width: 150px; }
+.table th:nth-child(3), .table td:nth-child(3) { width: 80px; }
 .table th:nth-child(4), .table td:nth-child(4) { width: 100px; }
-.table th:nth-child(5), .table td:nth-child(5) { width: 120px; }
-.table th:nth-child(8), .table td:nth-child(8) { width: 150px; }
-.table th:nth-child(9), .table td:nth-child(9) { width: 130px; }
+.table th:nth-child(5), .table td:nth-child(5) { width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table th:nth-child(6), .table td:nth-child(6) { width: 64px; }
+.table th:nth-child(7), .table td:nth-child(7) { width: 130px; }
+.table th:nth-child(8), .table td:nth-child(8) { width: 160px; }
 .mono { font-family: ui-monospace, monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .itemsText {
   display: -webkit-box;
@@ -440,6 +596,8 @@ onMounted(() => load(1))
   text-decoration: none;
 }
 .linkBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+.linkBtn.greyed { color: #b0b0ba; cursor: not-allowed; }
+.btnPrimary.greyed { background: #c8c8d0; cursor: not-allowed; }
 .muted { color: #c8c8d0; font-size: 13px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; }
 .pageBtn { padding: 6px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; cursor: pointer; }
@@ -467,6 +625,20 @@ onMounted(() => load(1))
 .productCell { display: flex; align-items: center; gap: 10px; }
 .coverThumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid #f0f0f3; flex-shrink: 0; }
 .coverPlaceholder { width: 40px; height: 40px; line-height: 40px; text-align: center; font-size: 10px; color: #8c8c9a; background: #f4f5f7; border-radius: 6px; flex-shrink: 0; }
+.assignModal { width: 420px; max-width: 100%; }
+.courierList { list-style: none; max-height: 320px; overflow-y: auto; padding: 0; margin: 0; }
+.courierItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; cursor: pointer; border-radius: 8px; transition: background 0.15s;
+}
+.courierItem:hover { background: #f4f5f9; }
+.courierItem.selected { background: #eef0ff; }
+.courierRadio {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c8c8d0;
+  flex-shrink: 0; transition: all 0.15s;
+}
+.courierRadio.checked { border-color: #5c5c9e; background: #5c5c9e; box-shadow: inset 0 0 0 3px #fff; }
+.courierName { font-size: 14px; color: #1f1f2e; }
 @media (max-width: 640px) {
   .infoGrid { grid-template-columns: 1fr; }
 }

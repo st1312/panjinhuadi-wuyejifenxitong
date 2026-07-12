@@ -81,6 +81,13 @@
             <div v-if="profitDisplay.revenueGrowth" class="stepHint">较上期 ↑{{ profitDisplay.revenueGrowth }}</div>
           </div>
           <div class="arrow">→</div>
+          <div class="step" v-if="profitDisplay.commission !== '¥0'">
+            <div class="stepIcon down"><IconSvg name="trend" /></div>
+            <div class="stepLabel">抽佣</div>
+            <div class="stepValue">{{ profitDisplay.commission }}</div>
+            <div class="stepHint">占比 {{ profitDisplay.commissionPct }}%</div>
+          </div>
+          <div class="arrow" v-if="profitDisplay.commission !== '¥0'">→</div>
           <div class="step">
             <div class="stepIcon down"><IconSvg name="trend" /></div>
             <div class="stepLabel">配送费</div>
