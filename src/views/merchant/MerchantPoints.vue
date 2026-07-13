@@ -99,7 +99,6 @@
             <th>剩余积分</th>
             <th>金额</th>
             <th>状态</th>
-            <th>备注</th>
           </tr>
         </thead>
         <tbody>
@@ -109,8 +108,7 @@
             <td>{{ item.pointAmount ?? '—' }}</td>
             <td>{{ item.remainingPoints ?? '—' }}</td>
             <td>¥{{ formatMoney(item.payAmount) }}</td>
-            <td>{{ getEnumLabel(MERCHANT_AUDIT_STATUS_LABEL, item.status) }}</td>
-            <td>{{ item.auditRemark || '—' }}</td>
+            <td>{{ pointPurchaseStatusLabel(item.status) }}</td>
           </tr>
         </tbody>
       </table>
@@ -164,6 +162,16 @@ const selectedOrder = computed(() =>
 function formatMoney(value?: number) {
   if (value === undefined || value === null) return '0.00'
   return Number(value).toFixed(2)
+}
+
+const POINT_PURCHASE_STATUS_LABEL: Record<string, string> = {
+  pending: '审核中',
+  approved: '已通过',
+  rejected: '已拒绝'
+}
+
+function pointPurchaseStatusLabel(status?: string) {
+  return getEnumLabel(POINT_PURCHASE_STATUS_LABEL, status, status || '—')
 }
 
 function formatOrderOption(order: OrderItem) {

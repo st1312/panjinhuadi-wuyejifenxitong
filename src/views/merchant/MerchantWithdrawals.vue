@@ -35,7 +35,7 @@
             <td>¥{{ formatMoney(item.amount) }}</td>
             <td>¥{{ formatMoney(item.feeAmount) }}</td>
             <td>¥{{ formatMoney(item.actualAmount) }}</td>
-            <td>{{ getEnumLabel(WITHDRAWAL_AUDIT_STATUS_LABEL, item.status) }}</td>
+            <td>{{ getEnumLabel(LOCAL_STATUS_LABEL, item.status) }}</td>
             <td>{{ item.completedAt || '—' }}</td>
           </tr>
         </tbody>
@@ -76,7 +76,9 @@ import type { MerchantWithdrawalItem } from '../../api/types'
 import { ApiError } from '../../api/request'
 import { getEnumLabel, WITHDRAWAL_AUDIT_STATUS_LABEL } from '../../constants/enums'
 
-const statusOptions = Object.entries(WITHDRAWAL_AUDIT_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const LOCAL_STATUS_LABEL: Record<string, string> = { ...WITHDRAWAL_AUDIT_STATUS_LABEL, pending: '审核中' }
+
+const statusOptions = Object.entries(LOCAL_STATUS_LABEL).map(([value, label]) => ({ value, label }))
 
 const records = ref<MerchantWithdrawalItem[]>([])
 const loading = ref(false)

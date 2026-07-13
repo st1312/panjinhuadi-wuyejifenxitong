@@ -320,11 +320,7 @@ function itemsSummary(order: OrderItem) {
 }
 
 function paymentSummary(order: OrderItem) {
-  const parts: string[] = [paymentMethodLabel(order.paymentMethod)]
-  if (order.pointUsed) parts.push(`${order.pointUsed}积分`)
-  if (order.coinUsed) parts.push(`币¥${formatMoney(order.coinUsed)}`)
-  if (order.cashAmount) parts.push(`现金¥${formatMoney(order.cashAmount)}`)
-  return parts.filter((p) => p && p !== '—').join(' / ') || '—'
+  return order.paymentMethod || '—'
 }
 
 /** 已支付时可打开快递员指配弹窗 */
