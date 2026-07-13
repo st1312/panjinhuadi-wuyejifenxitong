@@ -462,6 +462,34 @@ export const WITHDRAWAL_AUDIT_STATUS_LABEL: Record<string, string> = {
   completed: '已完成'
 }
 
+/** 积分购买审核状态 */
+export const POINT_PURCHASE_AUDIT_STATUS = {
+  PENDING: 'pending_audit',
+  APPROVED: 'approved',
+  REJECTED: 'rejected'
+} as const
+
+export const POINT_PURCHASE_AUDIT_STATUS_LABEL: Record<string, string> = {
+  pending_audit: '待审核',
+  approved: '已通过',
+  rejected: '已拒绝'
+}
+
+export const POINT_PURCHASE_AUDIT_STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: POINT_PURCHASE_AUDIT_STATUS.PENDING, label: '待审核' },
+  { value: POINT_PURCHASE_AUDIT_STATUS.APPROVED, label: '已通过' },
+  { value: POINT_PURCHASE_AUDIT_STATUS.REJECTED, label: '已拒绝' }
+]
+
+export const WITHDRAWAL_AUDIT_STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: WITHDRAWAL_AUDIT_STATUS.PENDING, label: '待审核' },
+  { value: WITHDRAWAL_AUDIT_STATUS.APPROVED, label: '已通过' },
+  { value: WITHDRAWAL_AUDIT_STATUS.REJECTED, label: '已拒绝' },
+  { value: WITHDRAWAL_AUDIT_STATUS.COMPLETED, label: '已完成' }
+]
+
 export const RESIDENT_STATUS_OPTIONS = [
   { value: RESIDENT_STATUS.ACTIVE, label: '正常' },
   { value: RESIDENT_STATUS.FROZEN, label: '冻结' },

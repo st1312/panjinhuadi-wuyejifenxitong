@@ -2,12 +2,20 @@ export interface Menu {
   name: string
   icon: string
   route: string
+  children?: Menu[]
 }
 
 export const adminMenus: Menu[] = [
   { name: '数据大盘', icon: 'dashboard', route: 'dashboard' },
   { name: '住户管理', icon: 'resident', route: 'resident' },
-  { name: '商家管理', icon: 'merchant', route: 'merchant' },
+  {
+    name: '商家管理', icon: 'merchant', route: 'merchant',
+    children: [
+      { name: '商家管理', icon: 'merchant', route: 'merchant' },
+      { name: '积分审批', icon: 'points', route: 'merchant-point-approval' },
+      { name: '提现审批', icon: 'wallet', route: 'merchant-withdrawal-approval' }
+    ]
+  },
   { name: '权限配置', icon: 'permission', route: 'permission' },
   { name: '板块负责人', icon: 'people', route: 'sector-leaders' },
   { name: '参数配置', icon: 'param', route: 'param' },

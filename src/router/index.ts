@@ -6,6 +6,8 @@ import AppLayout from '../layouts/AppLayout.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Permission from '../views/Permission.vue'
 import Merchant from '../views/Merchant.vue'
+import MerchantPointApproval from '../views/admin/MerchantPointApproval.vue'
+import MerchantWithdrawalApproval from '../views/admin/MerchantWithdrawalApproval.vue'
 import Points from '../views/Points.vue'
 import Resident from '../views/Resident.vue'
 import Param from '../views/Param.vue'
@@ -68,6 +70,18 @@ const routes = [
         name: 'merchant',
         component: Merchant,
         meta: { title: '商家管理', roles: ADMIN_ROLES }
+      },
+      {
+        path: 'merchant/point-approval',
+        name: 'merchant-point-approval',
+        component: MerchantPointApproval,
+        meta: { title: '积分审批', roles: ADMIN_ROLES }
+      },
+      {
+        path: 'merchant/withdrawal-approval',
+        name: 'merchant-withdrawal-approval',
+        component: MerchantWithdrawalApproval,
+        meta: { title: '提现审批', roles: ADMIN_ROLES }
       },
       {
         path: 'permission',

@@ -76,7 +76,13 @@ import type {
   SpecialOfferCreatePayload,
   SpecialOfferItem,
   SpecialOfferUpdatePayload,
-  UserProfile
+  UserProfile,
+  AdminMerchantPointPurchaseItem,
+  AdminPointPurchaseAuditPayload,
+  AdminPointPurchaseAuditResult,
+  AdminMerchantWithdrawalItem,
+  AdminWithdrawalAuditPayload,
+  AdminWithdrawalAuditResult
 } from './types'
 
 
@@ -872,6 +878,56 @@ export const activityGroupApi = {
       method: 'PUT',
       body: JSON.stringify(payload)
     })
+  }
+}
+
+/** 管理端 - 商家积分购买审核 */
+export const adminMerchantPointPurchaseApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    merchantId?: string
+    auditStatus?: string
+    status?: string
+    startDate?: string
+    endDate?: string
+    propertyCompanyId?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<AdminMerchantPointPurchaseItem>>(
+      `/admin/merchant-point-purchases${buildQuery(params)}`
+    )
+  },
+  audit(id: string, payload: AdminPointPurchaseAuditPayload) {
+    return request<AdminPointPurchaseAuditResult>(
+      `/admin/merchant-point-purchases/${id}/audit`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    )
+  }
+}
+
+/** 管理端 - 商家提现审核 */
+export const adminMerchantWithdrawalApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    merchantId?: string
+    auditStatus?: string
+    status?: string
+    startDate?: string
+    endDate?: string
+    propertyCompanyId?: string
+    sort?: string
+  } = {}) {
+    return request<PageResult<AdminMerchantWithdrawalItem>>(
+      `/admin/merchant-withdrawals${buildQuery(params)}`
+    )
+  },
+  audit(id: string, payload: AdminWithdrawalAuditPayload) {
+    return request<AdminWithdrawalAuditResult>(
+      `/admin/merchant-withdrawals/${id}/audit`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    )
   }
 }
 

@@ -13,23 +13,45 @@
       </div>
     </div>
     <nav class="appSidebarNav">
-      <RouterLink
-        v-for="menu in menuList"
-        :key="menu.name"
-        :to="{ name: menu.route }"
-        class="appSidebarItem"
-        :class="{ appSidebarItemActive: currentRoute.name === menu.route }"
-      >
-        <IconSvg :name="menu.icon" class="appSidebarIcon" />
-        <span>{{ menu.name }}</span>
-      </RouterLink>
+      <template v-for="menu in menuList" :key="menu.name">
+        <div v-if="menu.children" class="sidebarGroup">
+          <div
+            class="appSidebarItem groupHeader"
+            :class="{ appSidebarItemActive: isGroupActive(menu) }"
+            @click="toggleGroup(menu.route)"
+          >
+            <IconSvg :name="menu.icon" class="appSidebarIcon" />
+            <span>{{ menu.name }}</span>
+            <IconSvg :name="expandedGroups[menu.route] ? 'chevron-up' : 'chevron-down'" class="chevron" />
+          </div>
+          <div v-if="expandedGroups[menu.route]" class="subMenu">
+            <RouterLink
+              v-for="child in menu.children"
+              :key="child.name"
+              :to="{ name: child.route }"
+              class="appSidebarItem subItem"
+              :class="{ appSidebarItemActive: currentRoute.name === child.route }"
+            >
+              <span>{{ child.name }}</span>
+            </RouterLink>
+          </div>
+        </div>
+        <RouterLink
+          v-else
+          :to="{ name: menu.route }"
+          class="appSidebarItem"
+          :class="{ appSidebarItemActive: currentRoute.name === menu.route }"
+        >
+          <IconSvg :name="menu.icon" class="appSidebarIcon" />
+          <span>{{ menu.name }}</span>
+        </RouterLink>
+      </template>
     </nav>
-
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getMenusForRole, getPortalSubtitle } from '../constants/roles'
 import { useAuthStore } from '../stores/auth'
@@ -40,6 +62,37 @@ const auth = useAuthStore()
 const menuList = computed(() => getMenusForRole(auth.profile?.role))
 const portalSubtitle = computed(() => getPortalSubtitle(auth.profile?.role))
 
+const expandedGroups = reactive<Record<string, boolean>>({})
+
+function isGroupActive(menu: { name: string; route: string; children?: { route: string }[] }): boolean {
+  if (currentRoute.name === menu.route) return true
+  if (menu.children) {
+    return menu.children.some(child => currentRoute.name === child.route)
+  }
+  return false
+}
+
+function toggleGroup(route: string) {
+  expandedGroups[route] = !expandedGroups[route]
+}
+
+// 自动展开当前路由所在的组
+watch(
+  () => currentRoute.name,
+  (name) => {
+    if (!name) return
+    for (const menu of menuList.value) {
+      if (menu.children) {
+        const match = menu.children.some(child => child.route === name)
+        if (match) {
+          expandedGroups[menu.route] = true
+          break
+        }
+      }
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -95,6 +148,8 @@ const portalSubtitle = computed(() => getPortalSubtitle(auth.profile?.role))
   font-size: 14px;
   transition: all 0.2s;
   margin-bottom: 4px;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .appSidebarItem:hover {
@@ -116,5 +171,46 @@ const portalSubtitle = computed(() => getPortalSubtitle(auth.profile?.role))
   width: 18px;
   height: 18px;
   margin-right: 12px;
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: #8c8c9a;
+  transition: transform 0.2s;
+}
+
+.sidebarGroup {
+  margin-bottom: 4px;
+}
+
+.groupHeader {
+  margin-bottom: 0;
+}
+
+.subMenu {
+  margin-bottom: 4px;
+}
+
+.subItem {
+  height: 36px;
+  font-size: 13px;
+  padding: 0 16px;
+  justify-content: center;
+}
+
+.subItem:hover {
+  background: rgba(92, 92, 158, 0.08);
+}
+
+.subItem.appSidebarItemActive {
+  background: rgba(92, 92, 158, 0.12);
+  color: #5c5c9e;
+}
+
+.subItem.appSidebarItemActive:hover {
+  background: rgba(92, 92, 158, 0.12);
+  color: #5c5c9e;
 }
 </style>

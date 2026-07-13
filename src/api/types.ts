@@ -828,6 +828,80 @@ export interface MerchantWithdrawalItem {
   completedAt?: string
 }
 
+/** 管理员 - 积分购买审核记录 */
+export interface AdminMerchantPointPurchaseItem {
+  id: string
+  merchantId: string
+  merchantName: string
+  pointAmount: number
+  payAmount: number
+  status: string
+  createdAt: string
+  auditRemark?: string
+  auditedAt?: string
+  operatorId?: string
+  auditResult?: string
+}
+
+/** 管理员 - 积分购买审核请求体 */
+export interface AdminPointPurchaseAuditPayload {
+  auditResult: string
+  rejectReason?: string
+  remark?: string
+}
+
+/** 管理员 - 积分购买审核结果 */
+export interface AdminPointPurchaseAuditResult {
+  id: string
+  merchantId: string
+  merchantName: string
+  pointAmount: number
+  payAmount: number
+  status: string
+  auditResult: string
+  auditRemark?: string
+  operatorId: string
+  auditedAt: string
+}
+
+/** 管理员 - 提现审核记录 */
+export interface AdminMerchantWithdrawalItem {
+  id: string
+  merchantId: string
+  merchantName: string
+  amount: number
+  feeAmount: number
+  actualAmount: number
+  status: string
+  createdAt: string
+  auditRemark?: string
+  auditedAt?: string
+  operatorId?: string
+  auditResult?: string
+}
+
+/** 管理员 - 提现审核请求体 */
+export interface AdminWithdrawalAuditPayload {
+  auditResult: string
+  rejectReason?: string
+  remark?: string
+}
+
+/** 管理员 - 提现审核结果 */
+export interface AdminWithdrawalAuditResult {
+  id: string
+  merchantId: string
+  merchantName: string
+  amount: number
+  feeAmount: number
+  actualAmount: number
+  status: string
+  auditResult: string
+  auditRemark?: string
+  operatorId: string
+  auditedAt: string
+}
+
 export interface MerchantWithdrawalPayload {
   amount: number
 }
