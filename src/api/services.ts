@@ -1,9 +1,20 @@
 import { buildQuery, request } from './request'
 import { MERCHANT_AUDIT_STATUS } from '../constants/enums'
 import type {
+  AgeBracketItem,
   AnnouncementCreatePayload,
   AnnouncementItem,
+  AnnouncementReadStats,
   AnnouncementUpdatePayload,
+  CommunityEntityCreatePayload,
+  CommunityEntityItem,
+  CommunityPropertyBindPayload,
+  CommunityPropertyBindingItem,
+  CommunityPropertyPermissionPayload,
+  ConsultantCreatePayload,
+  ConsultantItem,
+  ConsultantUpdatePayload,
+  ConsultationSettings,
   DashboardOverview,
   DeliveryOrderItem,
   DeliveryCapacity,
@@ -13,12 +24,24 @@ import type {
   DeliveryRule,
   DeliveryTaskItem,
   DeliveryTodayStats,
+  DirectedMessageCreatePayload,
+  DirectedMessageRecipientItem,
+  DirectedMessageSendResult,
+  DirectedMessageTaskItem,
+  DistributorProductCreatePayload,
   RecentDeliveryItem,
   LeaderItem,
   LoginResult,
+  MerchantAdCreatePayload,
+  MerchantAdItem,
+  MerchantAdPackageItem,
+  MerchantAdQuota,
   MerchantItem,
   MerchantKickPayload,
   MerchantKickResult,
+  MerchantMessageServicePayload,
+  MerchantServiceScope,
+  MerchantServiceScopeUpdatePayload,
   MerchantUpdatePayload,
   MerchantProfitSpace,
   MerchantAuditPayload,
@@ -38,10 +61,17 @@ import type {
   PropertyCompanyDetail,
   PropertyCompanyItem,
   PropertyCompanyCommunity,
+  PropertyOperatorCreatePayload,
+  PropertyOperatorItem,
+  PropertyOperatorScopePayload,
   ResidentItem,
   ResidentCreatePayload,
   ResidentUpdatePayload,
   ResidentStatusPayload,
+  ResidentMerchantApplicationItem,
+  ResidentMerchantDepositItem,
+  ResidentMerchantSettlementItem,
+  ResidentMerchantSettings,
   RolePresetDto,
   CoinFreezePayload,
   CoinFreezeResult,
@@ -68,6 +98,9 @@ import type {
   SectorLeaderCreatePayload,
   SectorLeaderRemoveResult,
   SectorLeaderUpdatePayload,
+  ServiceCategoryDictItem,
+  ServiceRequestItem,
+  ServiceRequestQuotePayload,
   CoordinatorDetail,
   ActivityGroupItem,
   ActivityGroupCreatePayload,
@@ -403,6 +436,10 @@ export const announcementApi = {
 
     })
 
+  },
+
+  readStats(id: string) {
+    return request<AnnouncementReadStats>(`/admin/announcements/${id}/read-stats`)
   }
 
 }
@@ -690,6 +727,64 @@ export const merchantPortalApi = {
     return request<PageResult<MerchantWithdrawalItem>>(
       `/merchant/withdrawals${buildQuery(params)}`
     )
+  },
+
+  getServiceScope() {
+    return request<MerchantServiceScope>('/merchants/my/service-scope')
+  },
+
+  updateServiceScope(payload: MerchantServiceScopeUpdatePayload) {
+    return request<MerchantServiceScope>('/merchants/my/service-scope', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateMessageService(payload: MerchantMessageServicePayload) {
+    return request<{ enabled: boolean }>('/merchants/my/message-service', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  serviceRequestPending(params: { page?: number; pageSize?: number } = {}) {
+    return request<PageResult<ServiceRequestItem>>(
+      `/merchant/service-requests/pending${buildQuery(params)}`
+    )
+  },
+
+  acceptServiceRequest(id: string) {
+    return request<ServiceRequestItem>(`/merchant/service-requests/${id}/accept`, {
+      method: 'POST'
+    })
+  },
+
+  skipServiceRequest(id: string) {
+    return request<ServiceRequestItem>(`/merchant/service-requests/${id}/skip`, {
+      method: 'POST'
+    })
+  },
+
+  quoteServiceRequest(id: string, payload: ServiceRequestQuotePayload) {
+    return request<ServiceRequestItem>(`/merchant/service-requests/${id}/quote`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  adQuota() {
+    return request<MerchantAdQuota>('/merchant/ads/quota')
+  },
+
+  ads(params: { page?: number; pageSize?: number } = {}) {
+    return request<PageResult<MerchantAdItem>>(`/merchant/ads${buildQuery(params)}`)
+  },
+
+  createAd(payload: MerchantAdCreatePayload) {
+    return request<MerchantAdItem>('/merchant/ads', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
   }
 }
 
@@ -961,6 +1056,263 @@ export const specialOfferApi = {
 
   remove(id: string) {
     return request<{ id: string }>(`/special-offers/${id}`, { method: 'DELETE' })
+  }
+}
+
+export const directedMessageApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    startDate?: string
+    endDate?: string
+    officialSenderType?: string
+    propertyCompanyId?: string
+  } = {}) {
+    return request<PageResult<DirectedMessageTaskItem>>(
+      `/admin/directed-messages${buildQuery(params)}`
+    )
+  },
+
+  get(id: string) {
+    return request<DirectedMessageTaskItem>(`/admin/directed-messages/${id}`)
+  },
+
+  create(payload: DirectedMessageCreatePayload) {
+    return request<DirectedMessageSendResult>('/admin/directed-messages', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  recipients(
+    id: string,
+    params: {
+      page?: number
+      pageSize?: number
+      readStatus?: string
+      buildingNo?: string
+      gender?: string
+      ageBracketId?: string
+    } = {}
+  ) {
+    return request<PageResult<DirectedMessageRecipientItem>>(
+      `/admin/directed-messages/${id}/recipients${buildQuery(params)}`
+    )
+  },
+
+  ageBrackets() {
+    return request<{ list: AgeBracketItem[] } | AgeBracketItem[]>('/admin/age-brackets')
+  },
+
+  updateAgeBrackets(brackets: AgeBracketItem[]) {
+    return request<{ list: AgeBracketItem[] }>('/admin/age-brackets', {
+      method: 'PUT',
+      body: JSON.stringify({ brackets })
+    })
+  }
+}
+
+export const communityEntityApi = {
+  list(params: { page?: number; pageSize?: number; keyword?: string } = {}) {
+    return request<PageResult<CommunityEntityItem>>(
+      `/admin/community-entities${buildQuery(params)}`
+    )
+  },
+
+  create(payload: CommunityEntityCreatePayload) {
+    return request<CommunityEntityItem>('/admin/community-entities', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  propertyCompanies(id: string) {
+    return request<{ list: CommunityPropertyBindingItem[] } | CommunityPropertyBindingItem[]>(
+      `/admin/community-entities/${id}/property-companies`
+    )
+  },
+
+  bindProperty(id: string, payload: CommunityPropertyBindPayload) {
+    return request<CommunityPropertyBindingItem>(
+      `/admin/community-entities/${id}/property-companies`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    )
+  },
+
+  unbindProperty(id: string, propertyCompanyId: string) {
+    return request<{ success?: boolean }>(
+      `/admin/community-entities/${id}/property-companies/${propertyCompanyId}`,
+      { method: 'DELETE' }
+    )
+  },
+
+  updatePermissions(
+    id: string,
+    propertyCompanyId: string,
+    payload: CommunityPropertyPermissionPayload
+  ) {
+    return request<CommunityPropertyBindingItem>(
+      `/admin/community-entities/${id}/property-companies/${propertyCompanyId}/permissions`,
+      { method: 'PUT', body: JSON.stringify(payload) }
+    )
+  }
+}
+
+export const propertyOperatorApi = {
+  list(params: { page?: number; pageSize?: number; status?: string } = {}) {
+    return request<PageResult<PropertyOperatorItem>>(
+      `/admin/property-operators${buildQuery(params)}`
+    )
+  },
+
+  create(payload: PropertyOperatorCreatePayload) {
+    return request<PropertyOperatorItem>('/admin/property-operators', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateScope(id: string, payload: PropertyOperatorScopePayload) {
+    return request<PropertyOperatorItem>(`/admin/property-operators/${id}/scope`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  updateStatus(id: string, status: string) {
+    return request<PropertyOperatorItem>(`/admin/property-operators/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    })
+  }
+}
+
+export const serviceCategoryApi = {
+  list() {
+    return request<{ list: ServiceCategoryDictItem[] } | ServiceCategoryDictItem[]>(
+      '/service-categories'
+    )
+  }
+}
+
+export const consultationAdminApi = {
+  list(params: {
+    page?: number
+    pageSize?: number
+    category?: string
+    keyword?: string
+    status?: string
+  } = {}) {
+    return request<PageResult<ConsultantItem>>(`/admin/consultants${buildQuery(params)}`)
+  },
+
+  create(payload: ConsultantCreatePayload) {
+    return request<ConsultantItem>('/admin/consultants', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  update(id: string, payload: ConsultantUpdatePayload) {
+    return request<ConsultantItem>(`/admin/consultants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  audit(id: string, auditResult: string, reason?: string) {
+    return request<ConsultantItem>(`/admin/consultants/${id}/audit`, {
+      method: 'PUT',
+      body: JSON.stringify({ auditResult, reason })
+    })
+  },
+
+  getSettings() {
+    return request<ConsultationSettings>('/admin/consultation-settings')
+  },
+
+  updateSettings(payload: ConsultationSettings) {
+    return request<ConsultationSettings>('/admin/consultation-settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+}
+
+export const residentMerchantAdminApi = {
+  applications(params: {
+    page?: number
+    pageSize?: number
+    status?: string
+    keyword?: string
+  } = {}) {
+    return request<PageResult<ResidentMerchantApplicationItem>>(
+      `/admin/resident-merchant-applications${buildQuery(params)}`
+    )
+  },
+
+  auditApplication(id: string, auditResult: string, reason?: string) {
+    return request<ResidentMerchantApplicationItem>(
+      `/admin/resident-merchant-applications/${id}/audit`,
+      { method: 'POST', body: JSON.stringify({ auditResult, reason }) }
+    )
+  },
+
+  deposits(params: { page?: number; pageSize?: number; status?: string } = {}) {
+    return request<PageResult<ResidentMerchantDepositItem>>(
+      `/admin/resident-merchant-deposits${buildQuery(params)}`
+    )
+  },
+
+  deductDeposit(id: string, amount: number, reason: string) {
+    return request<ResidentMerchantDepositItem>(`/admin/resident-merchant-deposits/${id}/deduct`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, reason })
+    })
+  },
+
+  settlements(params: {
+    page?: number
+    pageSize?: number
+    startDate?: string
+    endDate?: string
+  } = {}) {
+    return request<PageResult<ResidentMerchantSettlementItem>>(
+      `/admin/resident-merchant-settlements${buildQuery(params)}`
+    )
+  },
+
+  getSettings() {
+    return request<ResidentMerchantSettings>('/admin/resident-merchant-settings')
+  },
+
+  updateSettings(payload: ResidentMerchantSettings) {
+    return request<ResidentMerchantSettings>('/admin/resident-merchant-settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
+
+  createDistributorProduct(payload: DistributorProductCreatePayload) {
+    return request<{ id: string }>('/admin/distributor-products', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+}
+
+export const merchantAdAdminApi = {
+  packages() {
+    return request<{ list: MerchantAdPackageItem[] } | MerchantAdPackageItem[]>(
+      '/admin/merchant-ad-packages'
+    )
+  },
+
+  addQuota(merchantId: string, weeklyQuota: number, remark?: string) {
+    return request<{ merchantId: string; weeklyQuota: number }>(
+      `/admin/merchants/${merchantId}/ad-quota`,
+      { method: 'POST', body: JSON.stringify({ weeklyQuota, remark }) }
+    )
   }
 }
 

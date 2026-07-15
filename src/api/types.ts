@@ -337,6 +337,8 @@ export interface AnnouncementItem {
   targetBuildings?: string[]
   collectEnabled?: boolean
   collectFields?: AnnouncementCollectField[]
+  deliveryChannel?: string
+  pushToChat?: boolean
   status?: string
   publishedAt?: string
   createdAt?: string
@@ -357,6 +359,8 @@ export interface AnnouncementCreatePayload {
   targetBuildings?: string[]
   collectEnabled?: boolean
   collectFields?: AnnouncementCollectField[]
+  deliveryChannel?: string
+  pushToChat?: boolean
   status?: string
 }
 
@@ -370,7 +374,19 @@ export interface AnnouncementUpdatePayload {
   targetBuildings?: string[]
   collectEnabled?: boolean
   collectFields?: AnnouncementCollectField[]
+  deliveryChannel?: string
+  pushToChat?: boolean
   status?: string
+}
+
+export interface AnnouncementReadStats {
+  announcementId: string
+  deliveryChannel?: string
+  targetCount?: number
+  readCount?: number
+  unreadCount?: number
+  readRate?: number
+  byBuilding?: Array<{ buildingNo: string; readCount: number; unreadCount: number }>
 }
 
 export interface OperationLogItem {
@@ -507,6 +523,7 @@ export interface PropertyCompanyItem {
   contactPhone?: string
   address?: string
   communityCount?: number
+  communityEntityIds?: string[]
   status?: string
   createdAt?: string
 }
@@ -1174,4 +1191,338 @@ export interface SpecialOfferUpdatePayload {
   totalQuota?: number
   perUserQuota?: number
   status?: string
+}
+
+/* ---------- 二期 §52 定向消息 ---------- */
+
+export interface AgeBracketItem {
+  id: string
+  label: string
+  minAge?: number
+  maxAge?: number | null
+  sortOrder?: number
+}
+
+export interface DirectedMessageCreatePayload {
+  title: string
+  content: string
+  imageUrls?: string[]
+  officialSenderType: string
+  filterBuildings?: string[]
+  filterGender?: string
+  filterAgeBracketIds?: string[]
+  propertyCompanyId?: string
+}
+
+export interface DirectedMessageTaskItem {
+  id: string
+  title: string
+  content?: string
+  officialSenderType?: string
+  filterSummary?: string
+  filterBuildings?: string[]
+  filterGender?: string
+  filterAgeBracketIds?: string[]
+  recipientCount?: number
+  readCount?: number
+  unreadCount?: number
+  readRate?: number
+  status?: string
+  statusCode?: string
+  createdAt?: string
+  imageUrls?: string[]
+}
+
+export interface DirectedMessageRecipientItem {
+  id: string
+  residentId?: string
+  residentName?: string
+  buildingNo?: string
+  gender?: string
+  age?: number
+  readStatus?: string
+  readStatusCode?: string
+  readAt?: string
+}
+
+export interface DirectedMessageSendResult {
+  taskId: string
+  recipientCount?: number
+  status?: string
+  statusCode?: string
+  createdAt?: string
+}
+
+/* ---------- 二期 §53 社区多物业 ---------- */
+
+export interface CommunityEntityItem {
+  id: string
+  name: string
+  description?: string
+  adminResidentId?: string
+  adminName?: string
+  propertyCompanyCount?: number
+  createdAt?: string
+}
+
+export interface CommunityEntityCreatePayload {
+  name: string
+  description?: string
+  adminResidentId?: string
+}
+
+export interface CommunityPropertyBindingItem {
+  propertyCompanyId: string
+  propertyCompanyName?: string
+  permissionLevel?: string
+  allowedModules?: string[]
+  boundAt?: string
+}
+
+export interface CommunityPropertyBindPayload {
+  propertyCompanyId: string
+  permissionLevel?: string
+}
+
+export interface CommunityPropertyPermissionPayload {
+  permissionLevel: string
+  allowedModules?: string[]
+}
+
+/* ---------- 二期 §54 物业操作员 ---------- */
+
+export interface PropertyOperatorItem {
+  id: string
+  residentId?: string
+  phone?: string
+  name?: string
+  status?: string
+  statusCode?: string
+  communityIds?: string[]
+  buildingNos?: string[]
+  permissionPresetCode?: string
+  createdAt?: string
+}
+
+export interface PropertyOperatorCreatePayload {
+  phone: string
+  name: string
+  password: string
+  communityIds?: string[]
+  buildingNos?: string[]
+  permissionPresetCode?: string
+}
+
+export interface PropertyOperatorScopePayload {
+  communityIds?: string[]
+  buildingNos?: string[]
+  permissionPresetCode?: string
+}
+
+/* ---------- 二期 §55 商家服务范围 ---------- */
+
+export interface MerchantServiceScopeCommunity {
+  communityId: string
+  communityName?: string
+  selected?: boolean
+}
+
+export interface MerchantServiceScope {
+  serveAllCommunities: boolean
+  communities: MerchantServiceScopeCommunity[]
+}
+
+export interface MerchantServiceScopeUpdatePayload {
+  serveAllCommunities: boolean
+  communityIds?: string[]
+}
+
+export interface MerchantMessageServicePayload {
+  enabled: boolean
+  serviceRadius?: string
+  categoryIds?: string[]
+}
+
+export interface ServiceCategoryDictItem {
+  id: string
+  name: string
+  keywords?: string[]
+}
+
+/* ---------- 二期 §57 服务需求 ---------- */
+
+export interface ServiceRequestQuote {
+  amount?: number
+  currencyType?: string
+  description?: string
+  validHours?: number
+  quotedAt?: string
+}
+
+export interface ServiceRequestItem {
+  id: string
+  description?: string
+  status?: string
+  statusCode?: string
+  matchedCategoryName?: string
+  currentMerchantName?: string
+  communityId?: string
+  contactPhone?: string
+  preferredTime?: string
+  quote?: ServiceRequestQuote
+  createdAt?: string
+  expireAt?: string
+}
+
+export interface ServiceRequestQuotePayload {
+  amount: number
+  currencyType: string
+  description?: string
+  validHours?: number
+}
+
+/* ---------- 二期 §59 商家广告 ---------- */
+
+export interface MerchantAdQuota {
+  weekStart?: string
+  weekEnd?: string
+  freeQuota?: number
+  purchasedQuota?: number
+  usedCount?: number
+  remainingCount?: number
+}
+
+export interface MerchantAdItem {
+  id: string
+  title: string
+  content?: string
+  imageUrls?: string[]
+  productId?: string
+  status?: string
+  createdAt?: string
+}
+
+export interface MerchantAdCreatePayload {
+  title: string
+  content: string
+  imageUrls?: string[]
+  productId?: string
+}
+
+export interface MerchantAdPackageItem {
+  id: string
+  name?: string
+  weeklyQuota?: number
+  price?: number
+}
+
+/* ---------- 二期 §58 咨询 ---------- */
+
+export interface ConsultantItem {
+  id: string
+  name: string
+  title?: string
+  organization?: string
+  specialty?: string
+  category?: string
+  avatarUrl?: string
+  chatPrice?: number
+  appointmentEnabled?: boolean
+  appointmentPrice?: number
+  status?: string
+  statusCode?: string
+  auditStatus?: string
+  createdAt?: string
+}
+
+export interface ConsultantCreatePayload {
+  name: string
+  title?: string
+  organization?: string
+  specialty?: string
+  category: string
+  avatarUrl?: string
+  chatPrice?: number
+  appointmentEnabled?: boolean
+  appointmentPrice?: number
+  phone?: string
+  introduction?: string
+}
+
+export interface ConsultantUpdatePayload {
+  name?: string
+  title?: string
+  organization?: string
+  specialty?: string
+  category?: string
+  avatarUrl?: string
+  chatPrice?: number
+  appointmentEnabled?: boolean
+  appointmentPrice?: number
+  phone?: string
+  introduction?: string
+}
+
+export interface ConsultationSettings {
+  commissionRate?: number
+}
+
+/* ---------- 二期 §60 业主商户 ---------- */
+
+export interface ResidentMerchantApplicationItem {
+  id: string
+  residentId?: string
+  residentName?: string
+  phone?: string
+  communityId?: string
+  communityName?: string
+  depositAmount?: number
+  depositStatus?: string
+  status?: string
+  statusCode?: string
+  createdAt?: string
+  auditedAt?: string
+}
+
+export interface ResidentMerchantDepositItem {
+  id: string
+  applicationId?: string
+  residentId?: string
+  residentName?: string
+  amount?: number
+  status?: string
+  statusCode?: string
+  deductedAmount?: number
+  createdAt?: string
+}
+
+export interface ResidentMerchantSettlementItem {
+  id: string
+  orderId?: string
+  residentMerchantId?: string
+  residentName?: string
+  wholesaleAmount?: number
+  retailAmount?: number
+  commissionAmount?: number
+  settlementAmount?: number
+  status?: string
+  statusCode?: string
+  settledAt?: string
+  createdAt?: string
+}
+
+export interface ResidentMerchantSettings {
+  defaultDepositAmount?: number
+  platformCommissionRate?: number
+  refundWindowDays?: number
+}
+
+export interface DistributorProductCreatePayload {
+  name: string
+  coverUrl?: string
+  categoryId?: string
+  wholesalePrice: number
+  suggestedRetailPrice: number
+  stock?: number
+  description?: string
 }

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { USER_ROLE } from '../constants/enums'
-import { canAccessRoute, getRoleHomeRoute } from '../constants/roles'
+import { ADMIN_ROLES, canAccessRoute, getRoleHomeRoute } from '../constants/roles'
 import { useAuthStore } from '../stores/auth'
 import AppLayout from '../layouts/AppLayout.vue'
 import Dashboard from '../views/Dashboard.vue'
@@ -8,10 +8,15 @@ import Permission from '../views/Permission.vue'
 import Merchant from '../views/Merchant.vue'
 import MerchantPointApproval from '../views/admin/MerchantPointApproval.vue'
 import MerchantWithdrawalApproval from '../views/admin/MerchantWithdrawalApproval.vue'
+import Consultants from '../views/admin/Consultants.vue'
+import ResidentMerchants from '../views/admin/ResidentMerchants.vue'
 import Points from '../views/Points.vue'
 import Resident from '../views/Resident.vue'
 import Param from '../views/Param.vue'
 import Notice from '../views/Notice.vue'
+import DirectedMessage from '../views/DirectedMessage.vue'
+import CommunityEntity from '../views/CommunityEntity.vue'
+import PropertyOperators from '../views/PropertyOperators.vue'
 import Delivery from '../views/Delivery.vue'
 import SectorLeaders from '../views/SectorLeaders.vue'
 import Login from '../views/Login.vue'
@@ -20,6 +25,9 @@ import MerchantOrders from '../views/merchant/MerchantOrders.vue'
 import MerchantProducts from '../views/merchant/MerchantProducts.vue'
 import MerchantPoints from '../views/merchant/MerchantPoints.vue'
 import MerchantWithdrawals from '../views/merchant/MerchantWithdrawals.vue'
+import MerchantServiceScope from '../views/merchant/MerchantServiceScope.vue'
+import MerchantServiceRequests from '../views/merchant/MerchantServiceRequests.vue'
+import MerchantAds from '../views/merchant/MerchantAds.vue'
 import CourierAvailable from '../views/courier/CourierAvailable.vue'
 import CourierTasks from '../views/courier/CourierTasks.vue'
 import CourierOverview from '../views/courier/CourierOverview.vue'
@@ -40,7 +48,17 @@ import SectorLeaderOffers from '../views/sector-leader/SectorLeaderOffers.vue'
 import IndividualLeaderOverview from '../views/individual-leader/IndividualLeaderOverview.vue'
 import IndividualLeaderServices from '../views/individual-leader/IndividualLeaderServices.vue'
 
-const ADMIN_ROLES = [USER_ROLE.PLATFORM_ADMIN, USER_ROLE.PROPERTY_ADMIN]
+const ADMIN_ROLE_LIST = [...ADMIN_ROLES]
+/** 含参数/权限配置：排除物业操作员 */
+const ADMIN_FULL_ROLES = [
+  USER_ROLE.PLATFORM_ADMIN,
+  USER_ROLE.PROPERTY_ADMIN,
+  USER_ROLE.PROPERTY_LEADER
+]
+const DIRECTED_MESSAGE_ROLES = [
+  ...ADMIN_ROLE_LIST,
+  USER_ROLE.COORDINATOR
+]
 
 const routes = [
   {
@@ -57,67 +75,97 @@ const routes = [
         path: '',
         name: 'dashboard',
         component: Dashboard,
-        meta: { title: '数据大盘', roles: ADMIN_ROLES }
+        meta: { title: '数据大盘', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'resident',
         name: 'resident',
         component: Resident,
-        meta: { title: '住户管理', roles: ADMIN_ROLES }
+        meta: { title: '住户管理', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'merchant',
         name: 'merchant',
         component: Merchant,
-        meta: { title: '商家管理', roles: ADMIN_ROLES }
+        meta: { title: '商家管理', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'merchant/point-approval',
         name: 'merchant-point-approval',
         component: MerchantPointApproval,
-        meta: { title: '积分审批', roles: ADMIN_ROLES }
+        meta: { title: '积分审批', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'merchant/withdrawal-approval',
         name: 'merchant-withdrawal-approval',
         component: MerchantWithdrawalApproval,
-        meta: { title: '提现审批', roles: ADMIN_ROLES }
+        meta: { title: '提现审批', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'permission',
         name: 'permission',
         component: Permission,
-        meta: { title: '权限配置', roles: ADMIN_ROLES }
+        meta: { title: '权限配置', roles: ADMIN_FULL_ROLES }
       },
       {
         path: 'sector-leaders',
         name: 'sector-leaders',
         component: SectorLeaders,
-        meta: { title: '板块负责人', roles: ADMIN_ROLES }
+        meta: { title: '板块负责人', roles: ADMIN_ROLE_LIST }
+      },
+      {
+        path: 'community-entity',
+        name: 'community-entity',
+        component: CommunityEntity,
+        meta: { title: '社区绑定', roles: ADMIN_ROLE_LIST }
+      },
+      {
+        path: 'property-operators',
+        name: 'property-operators',
+        component: PropertyOperators,
+        meta: { title: '物业操作员', roles: ADMIN_FULL_ROLES }
       },
       {
         path: 'param',
         name: 'param',
         component: Param,
-        meta: { title: '参数配置', roles: ADMIN_ROLES }
+        meta: { title: '参数配置', roles: ADMIN_FULL_ROLES }
       },
       {
         path: 'points',
         name: 'points',
         component: Points,
-        meta: { title: '积分管理', roles: ADMIN_ROLES }
+        meta: { title: '积分管理', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'notice',
         name: 'notice',
         component: Notice,
-        meta: { title: '通告发布', roles: ADMIN_ROLES }
+        meta: { title: '通告发布', roles: ADMIN_ROLE_LIST }
+      },
+      {
+        path: 'directed-message',
+        name: 'directed-message',
+        component: DirectedMessage,
+        meta: { title: '定向推送', roles: DIRECTED_MESSAGE_ROLES }
+      },
+      {
+        path: 'consultants',
+        name: 'consultants',
+        component: Consultants,
+        meta: { title: '咨询师管理', roles: ADMIN_ROLE_LIST }
+      },
+      {
+        path: 'resident-merchants',
+        name: 'resident-merchants',
+        component: ResidentMerchants,
+        meta: { title: '业主商户', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'delivery',
         name: 'delivery',
         component: Delivery,
-        meta: { title: '送货管理', roles: ADMIN_ROLES }
+        meta: { title: '送货管理', roles: ADMIN_ROLE_LIST }
       },
       {
         path: 'merchant-portal/overview',
@@ -136,6 +184,24 @@ const routes = [
         name: 'merchant-products',
         component: MerchantProducts,
         meta: { title: '商品管理', roles: [USER_ROLE.MERCHANT] }
+      },
+      {
+        path: 'merchant-portal/service-scope',
+        name: 'merchant-service-scope',
+        component: MerchantServiceScope,
+        meta: { title: '服务范围', roles: [USER_ROLE.MERCHANT] }
+      },
+      {
+        path: 'merchant-portal/service-requests',
+        name: 'merchant-service-requests',
+        component: MerchantServiceRequests,
+        meta: { title: '服务需求', roles: [USER_ROLE.MERCHANT] }
+      },
+      {
+        path: 'merchant-portal/ads',
+        name: 'merchant-ads',
+        component: MerchantAds,
+        meta: { title: '广告推送', roles: [USER_ROLE.MERCHANT] }
       },
       {
         path: 'merchant-portal/points',

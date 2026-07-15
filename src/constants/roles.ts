@@ -5,15 +5,23 @@ import {
   courierMenus,
   individualLeaderMenus,
   merchantMenus,
+  propertyOperatorMenus,
   sectorLeaderMenus,
   type Menu
 } from './menus'
 
-export const ADMIN_ROLES = [USER_ROLE.PLATFORM_ADMIN, USER_ROLE.PROPERTY_ADMIN] as const
+export const ADMIN_ROLES = [
+  USER_ROLE.PLATFORM_ADMIN,
+  USER_ROLE.PROPERTY_ADMIN,
+  USER_ROLE.PROPERTY_LEADER,
+  USER_ROLE.PROPERTY_OPERATOR
+] as const
 
 const ROLE_MENUS: Record<string, Menu[]> = {
   [USER_ROLE.PLATFORM_ADMIN]: adminMenus,
   [USER_ROLE.PROPERTY_ADMIN]: adminMenus,
+  [USER_ROLE.PROPERTY_LEADER]: adminMenus,
+  [USER_ROLE.PROPERTY_OPERATOR]: propertyOperatorMenus,
   [USER_ROLE.MERCHANT]: merchantMenus,
   [USER_ROLE.COURIER]: courierMenus,
   [USER_ROLE.COORDINATOR]: coordinatorMenus,
@@ -24,6 +32,8 @@ const ROLE_MENUS: Record<string, Menu[]> = {
 const PORTAL_SUBTITLE: Record<string, string> = {
   [USER_ROLE.PLATFORM_ADMIN]: '管理后台',
   [USER_ROLE.PROPERTY_ADMIN]: '管理后台',
+  [USER_ROLE.PROPERTY_LEADER]: '管理后台',
+  [USER_ROLE.PROPERTY_OPERATOR]: '管理后台',
   [USER_ROLE.MERCHANT]: '商家工作台',
   [USER_ROLE.COURIER]: '配送工作台',
   [USER_ROLE.COORDINATOR]: '统筹工作台',
@@ -45,6 +55,8 @@ export function getRoleHomeRoute(role?: string | null): string {
       return 'individual-leader-overview'
     case USER_ROLE.PLATFORM_ADMIN:
     case USER_ROLE.PROPERTY_ADMIN:
+    case USER_ROLE.PROPERTY_LEADER:
+    case USER_ROLE.PROPERTY_OPERATOR:
     default:
       return 'dashboard'
   }
@@ -67,14 +79,21 @@ export function canAccessRoute(role: string | undefined | null, allowedRoles?: s
 }
 
 export function isAdminRole(role?: string | null): boolean {
-  return role === USER_ROLE.PLATFORM_ADMIN || role === USER_ROLE.PROPERTY_ADMIN
+  return (
+    role === USER_ROLE.PLATFORM_ADMIN ||
+    role === USER_ROLE.PROPERTY_ADMIN ||
+    role === USER_ROLE.PROPERTY_LEADER ||
+    role === USER_ROLE.PROPERTY_OPERATOR
+  )
 }
 
 /** GET /auth/profile 仅以下角色可调用 */
 export const PROFILE_API_ROLES = [
   USER_ROLE.RESIDENT,
   USER_ROLE.PROPERTY_ADMIN,
-  USER_ROLE.PLATFORM_ADMIN
+  USER_ROLE.PLATFORM_ADMIN,
+  USER_ROLE.PROPERTY_LEADER,
+  USER_ROLE.PROPERTY_OPERATOR
 ] as const
 
 export function canUseProfileApi(role?: string | null): boolean {

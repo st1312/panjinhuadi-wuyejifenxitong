@@ -139,6 +139,7 @@ export const PAYMENT_METHOD = {
   MIXED: 'mixed',
   POINT: 'point',
   COIN: 'coin',
+  PROPERTY_COIN: 'property_coin',
   CASH: 'cash',
   WECHAT: 'wechat',
   ALIPAY: 'alipay'
@@ -148,6 +149,7 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   mixed: '混合支付',
   point: '积分支付',
   coin: '物业币支付',
+  property_coin: '物业币支付',
   cash: '现金',
   wechat: '微信支付',
   alipay: '支付宝'
@@ -169,6 +171,8 @@ export const USER_ROLE = {
   RESIDENT: 'resident',
   PROPERTY_ADMIN: 'property_admin',
   PLATFORM_ADMIN: 'platform_admin',
+  PROPERTY_LEADER: 'property_leader',
+  PROPERTY_OPERATOR: 'property_operator',
   MERCHANT: 'merchant',
   COURIER: 'courier',
   COORDINATOR: 'coordinator',
@@ -184,7 +188,10 @@ export const MESSAGE_TYPE = {
   SYSTEM: 'system_message',
   COMMUNITY: 'community_message',
   RESIDENT: 'resident_message',
-  TECHNICIAN: 'technician_message'
+  TECHNICIAN: 'technician_message',
+  OFFICIAL: 'official_message',
+  MERCHANT_AD: 'merchant_ad',
+  SERVICE_REQUEST: 'service_request'
 } as const
 
 export const MESSAGE_TYPE_LABEL: Record<string, string> = {
@@ -193,7 +200,151 @@ export const MESSAGE_TYPE_LABEL: Record<string, string> = {
   system_message: '系统消息',
   community_message: '社区消息',
   resident_message: '业主消息',
-  technician_message: '技工消息'
+  technician_message: '技工消息',
+  official_message: '官方消息',
+  merchant_ad: '商家广告',
+  service_request: '服务需求'
+}
+
+/** 官方定向消息发送方身份 */
+export const OFFICIAL_SENDER_TYPE = {
+  COMMUNITY: 'community',
+  PROPERTY: 'property',
+  PLATFORM: 'platform',
+  COORDINATOR: 'coordinator'
+} as const
+
+export const OFFICIAL_SENDER_TYPE_LABEL: Record<string, string> = {
+  community: '社区官方',
+  property: '物业官方',
+  platform: '平台官方',
+  coordinator: '统筹'
+}
+
+export const OFFICIAL_SENDER_TYPE_OPTIONS = Object.entries(OFFICIAL_SENDER_TYPE_LABEL).map(
+  ([value, label]) => ({ value, label })
+)
+
+/** 定向推送性别筛选 */
+export const FILTER_GENDER = {
+  MALE: 'male',
+  FEMALE: 'female',
+  ALL: 'all'
+} as const
+
+export const FILTER_GENDER_LABEL: Record<string, string> = {
+  male: '男',
+  female: '女',
+  all: '全部'
+}
+
+export const FILTER_GENDER_OPTIONS = Object.entries(FILTER_GENDER_LABEL).map(([value, label]) => ({
+  value,
+  label
+}))
+
+/** 公告投递渠道 */
+export const DELIVERY_CHANNEL = {
+  ANNOUNCEMENT_BOARD: 'announcement_board',
+  CHAT: 'chat',
+  BOTH: 'both'
+} as const
+
+export const DELIVERY_CHANNEL_LABEL: Record<string, string> = {
+  announcement_board: '仅公告栏',
+  chat: '仅聊天列表',
+  both: '公告栏 + 聊天'
+}
+
+export const DELIVERY_CHANNEL_OPTIONS = Object.entries(DELIVERY_CHANNEL_LABEL).map(
+  ([value, label]) => ({ value, label })
+)
+
+/** 社区对物业的权限级别 */
+export const COMMUNITY_PERMISSION_LEVEL = {
+  READ_ONLY: 'read_only',
+  OPERATE: 'operate'
+} as const
+
+export const COMMUNITY_PERMISSION_LEVEL_LABEL: Record<string, string> = {
+  read_only: '只读',
+  operate: '可操作'
+}
+
+export const COMMUNITY_PERMISSION_LEVEL_OPTIONS = Object.entries(
+  COMMUNITY_PERMISSION_LEVEL_LABEL
+).map(([value, label]) => ({ value, label }))
+
+/** 商家消息服务半径 */
+export const SERVICE_RADIUS = {
+  KM3: '3km',
+  KM5: '5km',
+  DISTRICT: 'district',
+  CITY: 'city'
+} as const
+
+export const SERVICE_RADIUS_LABEL: Record<string, string> = {
+  '3km': '3公里',
+  '5km': '5公里',
+  district: '本区',
+  city: '本市'
+}
+
+export const SERVICE_RADIUS_OPTIONS = Object.entries(SERVICE_RADIUS_LABEL).map(([value, label]) => ({
+  value,
+  label
+}))
+
+/** 服务需求单状态 */
+export const SERVICE_REQUEST_STATUS = {
+  MATCHING: 'matching',
+  PENDING_MERCHANT: 'pending_merchant_response',
+  NEGOTIATING: 'negotiating',
+  QUOTED: 'quoted',
+  PAID: 'paid',
+  CLOSED: 'closed',
+  CANCELLED: 'cancelled'
+} as const
+
+export const SERVICE_REQUEST_STATUS_LABEL: Record<string, string> = {
+  matching: '匹配中',
+  pending_merchant_response: '待商家响应',
+  negotiating: '协商中',
+  quoted: '已报价',
+  paid: '已支付',
+  closed: '已关闭',
+  cancelled: '已取消'
+}
+
+/** 咨询领域 */
+export const CONSULTATION_CATEGORY = {
+  MEDICAL: 'medical',
+  EDUCATION: 'education',
+  ELDERLY: 'elderly'
+} as const
+
+export const CONSULTATION_CATEGORY_LABEL: Record<string, string> = {
+  medical: '医疗',
+  education: '教育',
+  elderly: '养老'
+}
+
+export const CONSULTATION_CATEGORY_OPTIONS = Object.entries(CONSULTATION_CATEGORY_LABEL).map(
+  ([value, label]) => ({ value, label })
+)
+
+/** 二期业务错误码提示 */
+export const PHASE2_ERROR_MESSAGE: Record<number, string> = {
+  90101: '同一用户当日定向消息已达上限',
+  90102: '物业公司当日定向推送任务已达上限',
+  90103: '今日新聊人数已达上限',
+  90104: '商家响应已超时',
+  90105: '本周广告发布额度不足',
+  90106: '保证金未缴纳或状态不允许',
+  90107: '存在进行中订单，无法退出',
+  90108: '所有匹配商家均未响应，需求已关闭',
+  90109: '超出管辖范围',
+  90110: '该咨询师暂不可预约'
 }
 
 export const RESIDENT_USER_TYPE = {
@@ -260,6 +411,8 @@ export const PERMISSION_MODULE_LABEL: Record<string, string> = {
 export const ROLE_LABEL: Record<string, string> = {
   [USER_ROLE.PLATFORM_ADMIN]: '平台管理员',
   [USER_ROLE.PROPERTY_ADMIN]: '物业管理员',
+  [USER_ROLE.PROPERTY_LEADER]: '物业领导',
+  [USER_ROLE.PROPERTY_OPERATOR]: '物业管理员（操作）',
   [USER_ROLE.RESIDENT]: '住户',
   [USER_ROLE.MERCHANT]: '商家',
   [USER_ROLE.COURIER]: '快递员',
@@ -647,4 +800,9 @@ export type AuditResult = (typeof AUDIT_RESULT)[keyof typeof AUDIT_RESULT]
 export function getEnumLabel(map: Record<string, string>, value?: string | null, fallback = '-') {
   if (!value) return fallback
   return map[value] ?? value
+}
+
+export function getPhase2ErrorMessage(code?: number, fallback?: string) {
+  if (code != null && PHASE2_ERROR_MESSAGE[code]) return PHASE2_ERROR_MESSAGE[code]
+  return fallback || '操作失败'
 }

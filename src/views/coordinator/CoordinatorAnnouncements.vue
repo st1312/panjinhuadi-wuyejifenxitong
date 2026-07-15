@@ -142,6 +142,14 @@
             <p v-if="!buildingOptions.length" class="hint">暂无楼栋数据，将默认覆盖全部楼栋</p>
           </div>
           <div class="field">
+            <label class="label">投递渠道</label>
+            <select v-model="form.deliveryChannel" class="input">
+              <option v-for="opt in DELIVERY_CHANNEL_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
             <label class="checkbox inline">
               <input v-model="form.collectEnabled" type="checkbox" />
               <span class="checkmark"><IconSvg v-if="form.collectEnabled" name="check" /></span>
@@ -230,6 +238,7 @@
               <td>
                 <div class="rowActions">
                   <button type="button" class="detail" @click="openDetailModal(notice.id)">详情</button>
+                  <button type="button" class="detail" @click="openReadStats(notice.id)">已读统计</button>
                   <button
                     type="button"
                     class="detail"
@@ -308,6 +317,58 @@
     </Teleport>
 
     <Teleport to="body">
+      <div v-if="readStatsOpen" class="modalOverlay" @click.self="readStatsOpen = false">
+        <div class="modal">
+          <div class="modalHeader">
+            <h3 class="modalTitle">公告已读统计</h3>
+            <button type="button" class="modalClose" @click="readStatsOpen = false">&times;</button>
+          </div>
+          <div class="modalBody">
+            <div v-if="readStatsLoading" class="loadingText">加载中...</div>
+            <template v-else-if="readStats">
+              <div class="detailGrid">
+                <div class="detailItem">
+                  <span class="detailLabel">投递渠道</span>
+                  <span class="detailValue">{{ getEnumLabel(DELIVERY_CHANNEL_LABEL, readStats.deliveryChannel) }}</span>
+                </div>
+                <div class="detailItem">
+                  <span class="detailLabel">目标 / 已读 / 未读</span>
+                  <span class="detailValue">
+                    {{ readStats.targetCount ?? 0 }} / {{ readStats.readCount ?? 0 }} / {{ readStats.unreadCount ?? 0 }}
+                  </span>
+                </div>
+                <div class="detailItem">
+                  <span class="detailLabel">已读率</span>
+                  <span class="detailValue">{{ formatReadRate(readStats.readRate) }}</span>
+                </div>
+              </div>
+              <table v-if="readStats.byBuilding?.length" class="table" style="margin-top:12px">
+                <thead>
+                  <tr>
+                    <th>楼栋</th>
+                    <th>已读</th>
+                    <th>未读</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in readStats.byBuilding" :key="row.buildingNo">
+                    <td>{{ row.buildingNo }}</td>
+                    <td>{{ row.readCount }}</td>
+                    <td>{{ row.unreadCount }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+            <p v-if="readStatsError" class="error">{{ readStatsError }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="readStatsOpen = false">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
       <div v-if="deleteModalOpen" class="modalOverlay" @click.self="closeDeleteModal">
         <div class="modal">
           <div class="modalHeader">
@@ -340,6 +401,7 @@ import type {
   AnnouncementCollectField,
   AnnouncementCreatePayload,
   AnnouncementItem,
+  AnnouncementReadStats,
   AnnouncementUpdatePayload,
   ResidentItem
 } from '../../api/types'
@@ -349,6 +411,9 @@ import {
   ANNOUNCEMENT_STATUS,
   ANNOUNCEMENT_TARGET_ROLE_OPTIONS,
   ANNOUNCEMENT_TYPE,
+  DELIVERY_CHANNEL,
+  DELIVERY_CHANNEL_LABEL,
+  DELIVERY_CHANNEL_OPTIONS,
   formatAnnouncementTargetRoles,
   getEnumLabel,
   ROLE_LABEL,
@@ -377,7 +442,8 @@ const form = ref({
   selectedTargetRoles: [USER_ROLE.RESIDENT] as string[],
   collectEnabled: false,
   collectFields: [] as AnnouncementCollectField[],
-  coverUrlsText: ''
+  coverUrlsText: '',
+  deliveryChannel: DELIVERY_CHANNEL.ANNOUNCEMENT_BOARD
 })
 const selectAllBuildings = ref(true)
 const selectAllTargetRoles = ref(false)
@@ -408,6 +474,30 @@ const deleteTargetTitle = ref('')
 const deleteSubmitting = ref(false)
 const deleteError = ref('')
 
+const readStatsOpen = ref(false)
+const readStatsLoading = ref(false)
+const readStatsError = ref('')
+const readStats = ref<AnnouncementReadStats | null>(null)
+
+function formatReadRate(rate?: number) {
+  if (rate == null || Number.isNaN(rate)) return '—'
+  return `${(rate <= 1 ? rate * 100 : rate).toFixed(1)}%`
+}
+
+async function openReadStats(id: string) {
+  readStatsOpen.value = true
+  readStatsLoading.value = true
+  readStatsError.value = ''
+  readStats.value = null
+  try {
+    readStats.value = await announcementApi.readStats(id)
+  } catch (e) {
+    readStatsError.value = resolveErrorMessage(e)
+  } finally {
+    readStatsLoading.value = false
+  }
+}
+
 const targetRolesText = computed(() => {
   if (selectAllTargetRoles.value || !form.value.selectedTargetRoles.length) return '全部角色'
   return form.value.selectedTargetRoles.map((role) => getEnumLabel(ROLE_LABEL, role, role)).join('、')
@@ -433,6 +523,7 @@ const detailRows = computed(() => {
     { label: '公告类型', value: '平台公告' },
     { label: '覆盖楼栋', value: d.targetBuildings?.length ? d.targetBuildings.join('、') : '全部楼栋' },
     { label: '目标群体', value: formatAnnouncementTargetRoles(d.targetRoles) },
+    { label: '投递渠道', value: getEnumLabel(DELIVERY_CHANNEL_LABEL, d.deliveryChannel, '仅公告栏') },
     { label: '信息收集', value: d.collectEnabled ? '已启用' : '未启用' },
     { label: '发布时间', value: d.publishedAt || '—' },
     { label: '创建时间', value: d.createdAt || '—' },
@@ -536,7 +627,8 @@ function buildCreatePayload(status: string): AnnouncementCreatePayload {
     content: form.value.content.trim(),
     announcementType: ANNOUNCEMENT_TYPE.PLATFORM,
     status,
-    collectEnabled: form.value.collectEnabled || undefined
+    collectEnabled: form.value.collectEnabled || undefined,
+    deliveryChannel: form.value.deliveryChannel
   }
   const buildings = buildTargetBuildings()
   if (buildings?.length) payload.targetBuildings = buildings
@@ -555,7 +647,8 @@ function buildUpdatePayload(status: string): AnnouncementUpdatePayload {
     title: form.value.title.trim(),
     content: form.value.content.trim(),
     status,
-    collectEnabled: form.value.collectEnabled
+    collectEnabled: form.value.collectEnabled,
+    deliveryChannel: form.value.deliveryChannel
   }
   if (!selectAllBuildings.value) {
     payload.targetBuildings = buildTargetBuildings() ?? []
@@ -579,7 +672,8 @@ function resetForm() {
     selectedTargetRoles: [USER_ROLE.RESIDENT],
     collectEnabled: false,
     collectFields: [],
-    coverUrlsText: ''
+    coverUrlsText: '',
+    deliveryChannel: DELIVERY_CHANNEL.ANNOUNCEMENT_BOARD
   }
   selectAllBuildings.value = true
   selectAllTargetRoles.value = false
@@ -616,6 +710,7 @@ function applyDetailToForm(data: AnnouncementItem) {
     ? data.collectFields.map((field) => ({ ...field }))
     : []
   form.value.coverUrlsText = data.coverUrls?.join('\n') || ''
+  form.value.deliveryChannel = data.deliveryChannel || DELIVERY_CHANNEL.ANNOUNCEMENT_BOARD
   selectAllBuildings.value = !data.targetBuildings?.length
   formError.value = ''
   formSuccess.value = ''

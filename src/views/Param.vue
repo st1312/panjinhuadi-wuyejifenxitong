@@ -180,10 +180,10 @@
               </div>
             </div>
             <div class="field">
-              <label class="label">邻居私聊每日限制</label>
+              <label class="label">邻居私聊每日限制（主动新聊不同人数）</label>
               <div class="inputWrap">
                 <input v-model.number="config.neighborDailyContactLimit" type="number" min="0" step="1" class="input" />
-                <span class="unit">次/天</span>
+                <span class="unit">人/天</span>
               </div>
             </div>
           </div>
@@ -254,7 +254,7 @@ const config = reactive({
   sectorLeaderPercent: 10,
   individualLeaderPercent: 0,
   withdrawalFeeRatePercent: 0.6,
-  neighborDailyContactLimit: 2
+  neighborDailyContactLimit: 3
 } as {
   pointToFeeRatePercent: number
   twoYearClearEnabled: boolean
@@ -288,7 +288,7 @@ function mapConfigToForm(apiConfig: PropertyCompanyConfig) {
   config.sectorLeaderPercent = rateToFormPercent(apiConfig.sectorLeaderRate ?? 0.1)
   config.individualLeaderPercent = rateToFormPercent(apiConfig.individualLeaderRate ?? 0)
   config.withdrawalFeeRatePercent = rateToFormPercent(apiConfig.withdrawalFeeRate ?? 0.006)
-  config.neighborDailyContactLimit = apiConfig.neighborDailyContactLimit ?? 2
+  config.neighborDailyContactLimit = apiConfig.neighborDailyContactLimit ?? 3
 }
 
 function percentToRate(percent: number) {
