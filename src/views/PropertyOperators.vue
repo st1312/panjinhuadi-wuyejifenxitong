@@ -26,7 +26,7 @@
           <tr v-for="item in list" :key="item.id">
             <td>{{ item.name || '—' }}</td>
             <td>{{ item.phone || '—' }}</td>
-            <td>{{ formatList(item.communityIds) }}</td>
+            <td>{{ formatCommunityIds(item.communityIds) }}</td>
             <td>{{ formatList(item.buildingNos) }}</td>
             <td>{{ item.status || item.statusCode || '—' }}</td>
             <td class="actions">
@@ -68,8 +68,22 @@
               </div>
             </template>
             <div class="field">
-              <label class="label">管辖小区 ID（逗号分隔，空=全公司）</label>
-              <input v-model="form.communityIdsText" class="input" placeholder="com_001,com_002" />
+              <label class="label">管辖小区（不选=全公司）</label>
+              <select
+                v-model="form.communityIds"
+                class="input selectMultiple"
+                multiple
+                :disabled="communitiesLoading || !communities.length"
+              >
+                <option v-if="communitiesLoading" disabled value="">加载小区中...</option>
+                <option v-else-if="!communities.length" disabled value="">
+                  {{ authStore.propertyCompanyId ? '暂无可用小区' : '未获取到物业公司，请重新登录' }}
+                </option>
+                <option v-for="c in communities" :key="c.id" :value="c.id">
+                  {{ c.name || c.id }}
+                </option>
+              </select>
+              <p class="fieldHint">按住 Ctrl / Cmd 可多选</p>
             </div>
             <div class="field">
               <label class="label">管辖楼栋（逗号分隔，空=不限）</label>
@@ -95,14 +109,20 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { propertyOperatorApi } from '../api/services'
+import { propertyCompanyApi, propertyOperatorApi } from '../api/services'
 import { ApiError } from '../api/request'
-import type { PropertyOperatorItem } from '../api/types'
+import type { PropertyCompanyCommunity, PropertyOperatorItem } from '../api/types'
 import { ENTITY_STATUS } from '../constants/enums'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const error = ref('')
 const list = ref<PropertyOperatorItem[]>([])
+
+const communities = ref<PropertyCompanyCommunity[]>([])
+const communitiesLoading = ref(false)
 
 const modalOpen = ref(false)
 const editingId = ref('')
@@ -112,7 +132,7 @@ const form = ref({
   name: '',
   phone: '',
   password: '',
-  communityIdsText: '',
+  communityIds: [] as string[],
   buildingNosText: '',
   permissionPresetCode: ''
 })
@@ -135,9 +155,39 @@ function formatList(list?: string[]) {
   return list.join('、')
 }
 
+function formatCommunityIds(ids?: string[]) {
+  if (!ids?.length) return '全部'
+  return ids
+    .map((id) => {
+      const found = communities.value.find((c) => c.id === id)
+      return found?.name || id
+    })
+    .join('、')
+}
+
 function isActive(item: PropertyOperatorItem) {
   const code = item.statusCode || item.status
   return code === ENTITY_STATUS.ACTIVE || code === '启用' || code === 'active'
+}
+
+async function loadCommunities() {
+  const companyId = authStore.propertyCompanyId
+  if (!companyId) {
+    communities.value = []
+    return
+  }
+  communitiesLoading.value = true
+  try {
+    const res = await propertyCompanyApi.communities(companyId)
+    communities.value = res.list || []
+  } catch (e) {
+    communities.value = []
+    if (modalOpen.value) {
+      formError.value = resolveError(e) || '小区列表加载失败'
+    }
+  } finally {
+    communitiesLoading.value = false
+  }
 }
 
 async function loadList() {
@@ -160,12 +210,13 @@ function openCreate() {
     name: '',
     phone: '',
     password: '',
-    communityIdsText: '',
+    communityIds: [],
     buildingNosText: '',
     permissionPresetCode: ''
   }
   formError.value = ''
   modalOpen.value = true
+  loadCommunities()
 }
 
 function openScope(item: PropertyOperatorItem) {
@@ -174,17 +225,18 @@ function openScope(item: PropertyOperatorItem) {
     name: item.name || '',
     phone: item.phone || '',
     password: '',
-    communityIdsText: (item.communityIds || []).join(','),
+    communityIds: [...(item.communityIds || [])],
     buildingNosText: (item.buildingNos || []).join(','),
     permissionPresetCode: item.permissionPresetCode || ''
   }
   formError.value = ''
   modalOpen.value = true
+  loadCommunities()
 }
 
 async function submit() {
   formError.value = ''
-  const communityIds = parseCsv(form.value.communityIdsText)
+  const communityIds = form.value.communityIds.filter(Boolean)
   const buildingNos = parseCsv(form.value.buildingNosText)
   saving.value = true
   try {
@@ -227,7 +279,10 @@ async function toggleStatus(item: PropertyOperatorItem) {
   }
 }
 
-onMounted(loadList)
+onMounted(() => {
+  loadList()
+  loadCommunities()
+})
 </script>
 
 <style scoped>
@@ -355,5 +410,13 @@ onMounted(loadList)
   border-radius: 8px;
   padding: 8px 10px;
   font: inherit;
+}
+.selectMultiple {
+  min-height: 120px;
+}
+.fieldHint {
+  margin: 0;
+  font-size: 12px;
+  color: #8c8c9a;
 }
 </style>
