@@ -53,13 +53,13 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getMenusForRole, getPortalSubtitle } from '../constants/roles'
+import { getMenusForProfile, getPortalSubtitle } from '../constants/roles'
 import { useAuthStore } from '../stores/auth'
 import IconSvg from './IconSvg.vue'
 
 const currentRoute = useRoute()
 const auth = useAuthStore()
-const menuList = computed(() => getMenusForRole(auth.profile?.role))
+const menuList = computed(() => getMenusForProfile(auth.profile))
 const portalSubtitle = computed(() => getPortalSubtitle(auth.profile?.role))
 
 const expandedGroups = reactive<Record<string, boolean>>({})

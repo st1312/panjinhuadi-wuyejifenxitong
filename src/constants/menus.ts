@@ -29,16 +29,19 @@ export const adminMenus: Menu[] = [
   { name: '送货管理', icon: 'delivery', route: 'delivery' }
 ]
 
-/** 物业操作员：无参数配置、权限配置 */
+/** 领导专属菜单（操作员侧栏不展示） */
+export const PROPERTY_LEADER_ONLY_ROUTES = ['param', 'permission', 'property-operators'] as const
+
+/** 物业操作员：日常操作权限，无参数配置 / 权限分配 / 人员管理 */
 export const propertyOperatorMenus: Menu[] = adminMenus.filter(
-  (m) => m.route !== 'param' && m.route !== 'permission'
+  (m) => !(PROPERTY_LEADER_ONLY_ROUTES as readonly string[]).includes(m.route)
 )
 
 export const merchantMenus: Menu[] = [
   { name: '店铺概览', icon: 'dashboard', route: 'merchant-overview' },
   { name: '订单管理', icon: 'retail', route: 'merchant-orders' },
   { name: '商品管理', icon: 'merchant', route: 'merchant-products' },
-  { name: '服务范围', icon: 'home', route: 'merchant-service-scope' },
+  { name: '配送范围', icon: 'home', route: 'merchant-service-scope' },
   { name: '服务需求', icon: 'notice', route: 'merchant-service-requests' },
   { name: '广告推送', icon: 'retail', route: 'merchant-ads' },
   { name: '积分管理', icon: 'points', route: 'merchant-points' },

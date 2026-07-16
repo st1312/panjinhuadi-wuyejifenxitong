@@ -23,7 +23,8 @@ alwaysApply: true
 | `AUDIT_RESULT` | `approved`, `rejected`（审核提交） |
 | `MERCHANT_STATUS` / `ENTITY_STATUS` | `active`, `inactive` |
 | `ORDER_STATUS` | `pending`, `paid`, `delivering`, `completed`, `cancelled`, `refunding`, `refunded` |
-| `USER_ROLE` | `resident`, `property_admin`, `platform_admin`, `merchant`, `courier`, `activity_leader`, `technician` |
+| `USER_ROLE` | `resident`, `property_admin`, `platform_admin`, `merchant`, `courier`, `coordinator`, `sector_leader`, `individual_leader`, `activity_leader`, `technician` |
+| `PROPERTY_SUB_ROLE` | `property_leader`, `property_operator`（`property_admin` 下的子角色，非独立主角色） |
 | `RESIDENT_STATUS` | `active`, `frozen`, `disabled` |
 | `RESIDENT_USER_TYPE` | `owner`, `tenant` |
 | `ANNOUNCEMENT_TYPE` | `property_announcement`, `community_announcement`, … |

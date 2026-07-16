@@ -33,10 +33,16 @@ export interface UserProfile {
   phone?: string
   avatarUrl?: string
   role: string
+  /** 物业管理员子角色：property_leader | property_operator（仅 role=property_admin 时有意义） */
+  propertySubRole?: string
   propertyCompanyId?: string
   propertyName?: string
   communityId?: string
   communityName?: string
+  /** 操作员管辖小区（可选） */
+  communityIds?: string[]
+  /** 操作员管辖楼栋（可选） */
+  buildingNos?: string[]
   coordinatorId?: string
   sectorLeaderId?: string
   individualLeaderId?: string

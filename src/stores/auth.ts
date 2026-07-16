@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { authApi } from '../api/services'
 import { configureRequest } from '../api/request'
-import { canUseProfileApi } from '../constants/roles'
+import { canUseProfileApi, normalizeAdminIdentity } from '../constants/roles'
 import type { UserProfile } from '../api/types'
 import {
   clearTokens,
@@ -16,8 +16,23 @@ const AUTH_KEY = 'wuyejifen_auth'
 const PROFILE_KEY = 'userProfile'
 const COMPANY_KEY = 'propertyCompanyId'
 
+/** 兼容 snake_case / 子角色误作主角色 的 profile 字段 */
+function normalizeProfile(raw: UserProfile | (UserProfile & { property_sub_role?: string }) | null): UserProfile | null {
+  if (!raw) return null
+  const snakeSub = (raw as { property_sub_role?: string }).property_sub_role
+  const { role, propertySubRole } = normalizeAdminIdentity({
+    role: raw.role,
+    propertySubRole: raw.propertySubRole || snakeSub
+  })
+  return {
+    ...raw,
+    role: role || raw.role,
+    propertySubRole
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const profile = ref<UserProfile | null>(readProfile())
+  const profile = ref<UserProfile | null>(normalizeProfile(readProfile()))
   const propertyCompanyId = ref(readCompanyId())
   const isLoggedIn = ref(!!localStorage.getItem(AUTH_KEY) && hasValidSession())
   const username = ref(profile.value?.name || localStorage.getItem('wuyejifen_user') || '')
@@ -66,6 +81,14 @@ export const useAuthStore = defineStore('auth', () => {
     return readProfile()?.propertyCompanyId || import.meta.env.VITE_PROPERTY_COMPANY_ID || ''
   }
 
+  function persistProfile(user: UserProfile | null) {
+    profile.value = normalizeProfile(user)
+    if (profile.value) {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile.value))
+      if (profile.value.name) localStorage.setItem('wuyejifen_user', profile.value.name)
+    }
+  }
+
   function setSession(
     access: string,
     refresh: string,
@@ -74,15 +97,15 @@ export const useAuthStore = defineStore('auth', () => {
     remember: boolean
   ) {
     setTokens(access, refresh, remember)
-    profile.value = user
+    profile.value = normalizeProfile(user)
     propertyCompanyId.value = companyId
-    username.value = user?.name || username.value
+    username.value = profile.value?.name || username.value
 
     if (remember) {
       localStorage.setItem(AUTH_KEY, '1')
       localStorage.setItem(COMPANY_KEY, companyId)
-      if (user) localStorage.setItem(PROFILE_KEY, JSON.stringify(user))
-      if (user?.name) localStorage.setItem('wuyejifen_user', user.name)
+      if (profile.value) localStorage.setItem(PROFILE_KEY, JSON.stringify(profile.value))
+      if (profile.value?.name) localStorage.setItem('wuyejifen_user', profile.value.name)
     }
     isLoggedIn.value = true
   }
@@ -99,13 +122,12 @@ export const useAuthStore = defineStore('auth', () => {
     )
     try {
       if (canUseProfileApi(user?.role)) {
-        profile.value = await authApi.profile()
-        username.value = profile.value.name
-        if (profile.value.propertyCompanyId) {
+        persistProfile(await authApi.profile())
+        username.value = profile.value?.name || username.value
+        if (profile.value?.propertyCompanyId) {
           propertyCompanyId.value = profile.value.propertyCompanyId
           localStorage.setItem(COMPANY_KEY, profile.value.propertyCompanyId)
         }
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile.value))
       }
     } catch {
       // profile 获取失败不影响登录

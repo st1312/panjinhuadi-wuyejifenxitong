@@ -2,35 +2,41 @@
   <div class="page">
     <div class="header">
       <div>
-        <h1 class="title">服务范围与消息服务</h1>
-        <p class="desc">选择可服务的小区，并配置用户消息服务（接修窗帘等需求）</p>
+        <h1 class="title">配送范围与消息服务</h1>
+        <p class="desc">选择配送覆盖的小区（可多选），并配置用户消息服务（接修窗帘等需求）</p>
       </div>
     </div>
 
     <div class="grid">
-      <div class="card">
-        <div class="cardHead">服务小区</div>
+      <div class="card scopeCard">
+        <div class="cardHead">配送范围</div>
         <div v-if="scopeLoading" class="hint">加载中...</div>
         <template v-else>
           <label class="checkbox">
             <input v-model="serveAll" type="checkbox" @change="onServeAllChange" />
-            <span>服务全部小区（本物业挂接下）</span>
+            <span>配送至全部小区（本物业挂接下）</span>
           </label>
+          <p v-if="!serveAll" class="hint">可多选多个小区；已选 {{ selectedIds.length }} 个</p>
+          <div v-if="!serveAll && communities.length" class="scopeActions">
+            <button type="button" class="btnLink" @click="selectAllCommunities">全选</button>
+            <button type="button" class="btnLink" @click="clearCommunitySelection">清空</button>
+          </div>
           <div class="checkboxGroup">
-            <label v-for="c in communities" :key="c.communityId" class="checkbox">
+            <label v-for="c in communities" :key="communityKey(c)" class="checkbox">
               <input
                 v-model="selectedIds"
                 type="checkbox"
-                :value="c.communityId"
+                :value="communityKey(c)"
                 :disabled="serveAll"
               />
               <span>{{ c.communityName || c.communityId }}</span>
             </label>
           </div>
+          <p v-if="!serveAll && !communities.length" class="hint">暂无可选小区</p>
           <p v-if="scopeError" class="error">{{ scopeError }}</p>
           <p v-if="scopeSuccess" class="success">{{ scopeSuccess }}</p>
           <button type="button" class="btnPrimary" :disabled="scopeSaving" @click="saveScope">
-            {{ scopeSaving ? '保存中...' : '保存服务范围' }}
+            {{ scopeSaving ? '保存中...' : '保存配送范围' }}
           </button>
         </template>
       </div>
@@ -107,8 +113,20 @@ function resolveError(e: unknown) {
   return '操作失败'
 }
 
+function communityKey(c: MerchantServiceScopeCommunity) {
+  return String(c.communityId ?? '')
+}
+
 function onServeAllChange() {
   if (serveAll.value) selectedIds.value = []
+}
+
+function selectAllCommunities() {
+  selectedIds.value = communities.value.map((c) => communityKey(c)).filter(Boolean)
+}
+
+function clearCommunitySelection() {
+  selectedIds.value = []
 }
 
 async function loadScope() {
@@ -120,7 +138,8 @@ async function loadScope() {
     communities.value = data.communities || []
     selectedIds.value = (data.communities || [])
       .filter((c) => c.selected)
-      .map((c) => c.communityId)
+      .map((c) => communityKey(c))
+      .filter(Boolean)
   } catch (e) {
     scopeError.value = resolveError(e)
   } finally {
@@ -138,6 +157,10 @@ async function loadCategories() {
 }
 
 async function saveScope() {
+  if (!serveAll.value && !selectedIds.value.length) {
+    scopeError.value = '请至少选择一个配送小区，或勾选「配送至全部小区」'
+    return
+  }
   scopeSaving.value = true
   scopeError.value = ''
   scopeSuccess.value = ''
@@ -146,7 +169,7 @@ async function saveScope() {
       serveAllCommunities: serveAll.value,
       communityIds: serveAll.value ? undefined : [...selectedIds.value]
     })
-    scopeSuccess.value = '服务范围已保存'
+    scopeSuccess.value = '配送范围已保存'
     await loadScope()
   } catch (e) {
     scopeError.value = resolveError(e)
@@ -215,10 +238,31 @@ onMounted(async () => {
 .cardHead {
   font-weight: 600;
 }
+.scopeActions {
+  display: flex;
+  gap: 12px;
+}
+.scopeCard .btnLink {
+  border: none;
+  background: transparent;
+  color: #5c5c9e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 0;
+}
+.scopeCard .btnLink:hover {
+  color: #4a4a82;
+}
+.scopeCard .checkbox input[type='checkbox'] {
+  accent-color: #5c5c9e;
+}
 .checkboxGroup {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
 }
 .checkbox {
   display: inline-flex;
@@ -246,10 +290,17 @@ onMounted(async () => {
   border: none;
   border-radius: 8px;
   padding: 8px 14px;
-  background: #2f6bff;
+  background: #5c5c9e;
   color: #fff;
   cursor: pointer;
   font: inherit;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: #4a4a82;
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .hint {
   color: #8c8c9a;

@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { USER_ROLE } from '../constants/enums'
-import { ADMIN_ROLES, canAccessRoute, getRoleHomeRoute } from '../constants/roles'
+import {
+  ADMIN_ROLES,
+  canAccessLeaderOnlyRoute,
+  canAccessRoute,
+  getRoleHomeRoute
+} from '../constants/roles'
 import { useAuthStore } from '../stores/auth'
 import AppLayout from '../layouts/AppLayout.vue'
 import Dashboard from '../views/Dashboard.vue'
@@ -49,12 +54,8 @@ import IndividualLeaderOverview from '../views/individual-leader/IndividualLeade
 import IndividualLeaderServices from '../views/individual-leader/IndividualLeaderServices.vue'
 
 const ADMIN_ROLE_LIST = [...ADMIN_ROLES]
-/** 含参数/权限配置：排除物业操作员 */
-const ADMIN_FULL_ROLES = [
-  USER_ROLE.PLATFORM_ADMIN,
-  USER_ROLE.PROPERTY_ADMIN,
-  USER_ROLE.PROPERTY_LEADER
-]
+/** 参数配置 / 权限分配 / 操作员管理：路由守卫另校验 property_sub_role */
+const ADMIN_LEADER_ROLES = [...ADMIN_ROLES]
 const DIRECTED_MESSAGE_ROLES = [
   ...ADMIN_ROLE_LIST,
   USER_ROLE.COORDINATOR
@@ -105,7 +106,7 @@ const routes = [
         path: 'permission',
         name: 'permission',
         component: Permission,
-        meta: { title: '权限配置', roles: ADMIN_FULL_ROLES }
+        meta: { title: '权限配置', roles: ADMIN_LEADER_ROLES, propertyLeaderOnly: true }
       },
       {
         path: 'sector-leaders',
@@ -123,13 +124,13 @@ const routes = [
         path: 'property-operators',
         name: 'property-operators',
         component: PropertyOperators,
-        meta: { title: '物业操作员', roles: ADMIN_FULL_ROLES }
+        meta: { title: '物业操作员', roles: ADMIN_LEADER_ROLES, propertyLeaderOnly: true }
       },
       {
         path: 'param',
         name: 'param',
         component: Param,
-        meta: { title: '参数配置', roles: ADMIN_FULL_ROLES }
+        meta: { title: '参数配置', roles: ADMIN_LEADER_ROLES, propertyLeaderOnly: true }
       },
       {
         path: 'points',
@@ -189,7 +190,7 @@ const routes = [
         path: 'merchant-portal/service-scope',
         name: 'merchant-service-scope',
         component: MerchantServiceScope,
-        meta: { title: '服务范围', roles: [USER_ROLE.MERCHANT] }
+        meta: { title: '配送范围', roles: [USER_ROLE.MERCHANT] }
       },
       {
         path: 'merchant-portal/service-requests',
@@ -353,6 +354,10 @@ router.beforeEach((to) => {
 
   const allowedRoles = to.meta.roles as string[] | undefined
   if (!canAccessRoute(role, allowedRoles)) {
+    return { name: getRoleHomeRoute(role) }
+  }
+
+  if (to.meta.propertyLeaderOnly && !canAccessLeaderOnlyRoute(auth.profile, String(to.name || ''))) {
     return { name: getRoleHomeRoute(role) }
   }
 

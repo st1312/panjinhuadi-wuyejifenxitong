@@ -40,7 +40,7 @@ import { useRoute, useRouter } from 'vue-router'
 import IconSvg from './IconSvg.vue'
 import { propertyCompanyApi } from '../api/services'
 import type { PropertyCompanyItem } from '../api/types'
-import { ENTITY_STATUS, getEnumLabel, ROLE_LABEL, USER_ROLE } from '../constants/enums'
+import { ENTITY_STATUS, getUserRoleDisplayLabel, USER_ROLE } from '../constants/enums'
 import { isAdminRole } from '../constants/roles'
 import { useAuthStore } from '../stores/auth'
 
@@ -48,7 +48,9 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const pageTitle = computed(() => (route.meta.title as string) || '')
-const roleLabel = computed(() => getEnumLabel(ROLE_LABEL, auth.profile?.role, ''))
+const roleLabel = computed(() =>
+  getUserRoleDisplayLabel(auth.profile?.role, auth.profile?.propertySubRole)
+)
 
 const companies = ref<PropertyCompanyItem[]>([])
 const canSwitchCompany = computed(() => auth.profile?.role === USER_ROLE.PLATFORM_ADMIN)

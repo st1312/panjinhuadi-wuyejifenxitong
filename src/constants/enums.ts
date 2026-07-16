@@ -167,12 +167,11 @@ export const VOTE_OPTION_LABEL: Record<string, string> = {
   abstain: '弃权'
 }
 
+/** 主角色（UserRole）。物业领导/操作员不是独立主角色，见 PROPERTY_SUB_ROLE */
 export const USER_ROLE = {
   RESIDENT: 'resident',
   PROPERTY_ADMIN: 'property_admin',
   PLATFORM_ADMIN: 'platform_admin',
-  PROPERTY_LEADER: 'property_leader',
-  PROPERTY_OPERATOR: 'property_operator',
   MERCHANT: 'merchant',
   COURIER: 'courier',
   COORDINATOR: 'coordinator',
@@ -181,6 +180,25 @@ export const USER_ROLE = {
   ACTIVITY_LEADER: 'activity_leader',
   TECHNICIAN: 'technician'
 } as const
+
+/**
+ * 物业管理员子角色（property_sub_role）
+ * 主角色均为 property_admin，通过本字段区分领导与操作员
+ */
+export const PROPERTY_SUB_ROLE = {
+  LEADER: 'property_leader',
+  OPERATOR: 'property_operator'
+} as const
+
+export const PROPERTY_SUB_ROLE_LABEL: Record<string, string> = {
+  [PROPERTY_SUB_ROLE.LEADER]: '物业领导',
+  [PROPERTY_SUB_ROLE.OPERATOR]: '物业管理员'
+}
+
+export const PROPERTY_SUB_ROLE_OPTIONS = [
+  { value: PROPERTY_SUB_ROLE.LEADER, label: PROPERTY_SUB_ROLE_LABEL[PROPERTY_SUB_ROLE.LEADER] },
+  { value: PROPERTY_SUB_ROLE.OPERATOR, label: PROPERTY_SUB_ROLE_LABEL[PROPERTY_SUB_ROLE.OPERATOR] }
+]
 
 export const MESSAGE_TYPE = {
   PROPERTY: 'property_message',
@@ -411,8 +429,6 @@ export const PERMISSION_MODULE_LABEL: Record<string, string> = {
 export const ROLE_LABEL: Record<string, string> = {
   [USER_ROLE.PLATFORM_ADMIN]: '平台管理员',
   [USER_ROLE.PROPERTY_ADMIN]: '物业管理员',
-  [USER_ROLE.PROPERTY_LEADER]: '物业领导',
-  [USER_ROLE.PROPERTY_OPERATOR]: '物业管理员（操作）',
   [USER_ROLE.RESIDENT]: '住户',
   [USER_ROLE.MERCHANT]: '商家',
   [USER_ROLE.COURIER]: '快递员',
@@ -421,8 +437,19 @@ export const ROLE_LABEL: Record<string, string> = {
   [USER_ROLE.INDIVIDUAL_LEADER]: '个体负责人',
   [USER_ROLE.ACTIVITY_LEADER]: '活动组组长',
   [USER_ROLE.TECHNICIAN]: '技工',
+  /** 兼容：子角色值被误当作主角色返回时的展示 */
+  [PROPERTY_SUB_ROLE.LEADER]: '物业领导',
+  [PROPERTY_SUB_ROLE.OPERATOR]: '物业管理员',
   community_manager: '社区管理员',
   property_employee: '物业员工'
+}
+
+/** 展示用角色名：property_admin 优先按 property_sub_role 显示 */
+export function getUserRoleDisplayLabel(role?: string | null, propertySubRole?: string | null) {
+  if (role === USER_ROLE.PROPERTY_ADMIN && propertySubRole) {
+    return getEnumLabel(PROPERTY_SUB_ROLE_LABEL, propertySubRole, ROLE_LABEL[USER_ROLE.PROPERTY_ADMIN])
+  }
+  return getEnumLabel(ROLE_LABEL, role, '')
 }
 
 export const SERVICE_CATEGORY = {

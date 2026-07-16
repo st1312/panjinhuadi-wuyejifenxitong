@@ -56,8 +56,24 @@
               <textarea v-model="createForm.description" class="textarea" rows="3" />
             </div>
             <div class="field">
-              <label class="label">社区管理员住户 ID</label>
-              <input v-model="createForm.adminResidentId" class="input" placeholder="res_xxx" />
+              <label class="label">社区管理员</label>
+              <select
+                v-model="createForm.adminResidentId"
+                class="input"
+                :disabled="operatorsLoading"
+              >
+                <option value="">
+                  {{ operatorsLoading ? '加载管理员中...' : '请选择管理员（可选）' }}
+                </option>
+                <option
+                  v-for="op in operators"
+                  :key="op.id"
+                  :value="op.residentId || op.id"
+                >
+                  {{ formatOperatorLabel(op) }}
+                </option>
+              </select>
+              <p v-if="operatorsError" class="fieldHint error">{{ operatorsError }}</p>
             </div>
             <p v-if="createError" class="error">{{ createError }}</p>
             <div class="modalFooter">
@@ -147,16 +163,18 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { communityEntityApi, propertyCompanyApi } from '../api/services'
+import { communityEntityApi, propertyCompanyApi, propertyOperatorApi } from '../api/services'
 import { ApiError } from '../api/request'
 import type {
   CommunityEntityItem,
   CommunityPropertyBindingItem,
-  PropertyCompanyItem
+  PropertyCompanyItem,
+  PropertyOperatorItem
 } from '../api/types'
 import {
   COMMUNITY_PERMISSION_LEVEL,
-  COMMUNITY_PERMISSION_LEVEL_OPTIONS
+  COMMUNITY_PERMISSION_LEVEL_OPTIONS,
+  ENTITY_STATUS
 } from '../constants/enums'
 
 const loading = ref(false)
@@ -167,6 +185,9 @@ const createOpen = ref(false)
 const creating = ref(false)
 const createError = ref('')
 const createForm = ref({ name: '', description: '', adminResidentId: '' })
+const operators = ref<PropertyOperatorItem[]>([])
+const operatorsLoading = ref(false)
+const operatorsError = ref('')
 
 const bindOpen = ref(false)
 const binding = ref(false)
@@ -215,10 +236,35 @@ async function loadPropertyCompanies() {
   }
 }
 
+function formatOperatorLabel(op: PropertyOperatorItem) {
+  const name = op.name || '未命名'
+  const phone = op.phone ? `（${op.phone}）` : ''
+  return `${name}${phone}`
+}
+
+async function loadOperators() {
+  operatorsLoading.value = true
+  operatorsError.value = ''
+  try {
+    const res = await propertyOperatorApi.list({
+      page: 1,
+      pageSize: 100,
+      status: ENTITY_STATUS.ACTIVE
+    })
+    operators.value = res.list || []
+  } catch (e) {
+    operators.value = []
+    operatorsError.value = resolveError(e) || '管理员列表加载失败'
+  } finally {
+    operatorsLoading.value = false
+  }
+}
+
 function openCreate() {
   createForm.value = { name: '', description: '', adminResidentId: '' }
   createError.value = ''
   createOpen.value = true
+  loadOperators()
 }
 
 async function submitCreate() {
@@ -450,6 +496,11 @@ onMounted(async () => {
 .label {
   font-size: 13px;
   color: #666;
+}
+.fieldHint {
+  margin: 0;
+  font-size: 12px;
+  color: #8c8c9a;
 }
 .input,
 .textarea {
