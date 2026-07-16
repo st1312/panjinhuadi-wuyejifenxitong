@@ -504,6 +504,7 @@ onMounted(async () => {
 .cardHead {
   font-weight: 600;
   margin-bottom: 12px;
+  color: #5c5c9e;
 }
 .form,
 .field {
@@ -520,11 +521,16 @@ onMounted(async () => {
 }
 .input,
 .textarea {
-  border: 1px solid #ddd;
+  border: 1px solid #e8e8ec;
   border-radius: 8px;
-  padding: 8px 10px;
-  font: inherit;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #1f1f2e;
+  background: #ffffff;
+  outline: none;
 }
+.input:focus,
+.textarea:focus { border-color: #5c5c9e; }
 .input.sm {
   width: 140px;
 }
@@ -539,6 +545,7 @@ onMounted(async () => {
   gap: 6px;
   font-size: 13px;
 }
+.checkbox input { accent-color: #5c5c9e; }
 .ageRow {
   display: flex;
   gap: 8px;
@@ -555,29 +562,38 @@ onMounted(async () => {
   padding: 8px 6px;
   text-align: left;
 }
-.linkBtn,
-.btnPrimary,
-.btnSecondary {
+.linkBtn {
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
+  background: transparent;
+  color: #5c5c9e;
+  padding: 0;
   cursor: pointer;
   font: inherit;
 }
-.linkBtn {
-  background: transparent;
-  color: #2f6bff;
-  padding: 0;
-}
 .btnPrimary {
-  background: #2f6bff;
-  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  background: #5c5c9e;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
   align-self: flex-start;
+  transition: background 0.2s;
 }
+.btnPrimary:hover { background: #52529a; }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 .btnSecondary {
-  background: #f2f3f7;
-  color: #333;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid #e8e8ec;
+  background: #ffffff;
+  color: #5c5c66;
+  font-size: 14px;
+  cursor: pointer;
 }
+.btnSecondary:hover:not(:disabled) { border-color: #5c5c9e; color: #5c5c9e; }
+.btnSecondary:disabled { opacity: 0.6; cursor: not-allowed; }
 .error {
   color: #d14343;
   font-size: 13px;
