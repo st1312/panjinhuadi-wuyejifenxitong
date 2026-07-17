@@ -1190,7 +1190,8 @@ onMounted(async () => {
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
 .required { color: #e05c5c; }
-.btnPrimary { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; }
+.btnPrimary { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+.btnPrimary:hover { background: #52529a; }
 .btnPrimary svg { width: 16px; height: 16px; }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 .btnDanger { padding: 10px 18px; border-radius: 8px; border: none; background: #e05c5c; color: #ffffff; font-size: 14px; cursor: pointer; }
@@ -1294,7 +1295,9 @@ onMounted(async () => {
 .detailValue { font-size: 14px; color: #1f1f2e; word-break: break-all; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
 .btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @media (max-width: 768px) { .profitFlow .result { margin-left: 0; width: 100%; } }

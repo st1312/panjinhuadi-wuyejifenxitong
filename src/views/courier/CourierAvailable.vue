@@ -112,8 +112,11 @@ onMounted(() => load(1))
 .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
-.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
-.btnPrimary { padding: 8px 16px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
+.btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
+.btnPrimary:hover { background: #52529a; }
 .panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .loading, .empty, .error, .success { text-align: center; padding: 16px 0; font-size: 14px; color: #8c8c9a; }
 .error { color: #e05c5c; }

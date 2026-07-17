@@ -280,28 +280,28 @@ onMounted(async () => {
   color: #666;
 }
 .input {
-  border: 1px solid #ddd;
+  border: 1px solid #e8e8ec;
   border-radius: 8px;
-  padding: 8px 10px;
-  font: inherit;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #1f1f2e;
+  background: #ffffff;
+  outline: none;
 }
+.input:focus { border-color: #5c5c9e; }
 .btnPrimary {
   align-self: flex-start;
-  border: none;
+  padding: 10px 18px;
   border-radius: 8px;
-  padding: 8px 14px;
+  border: none;
   background: #5c5c9e;
-  color: #fff;
+  color: #ffffff;
+  font-size: 14px;
   cursor: pointer;
-  font: inherit;
+  transition: background 0.2s;
 }
-.btnPrimary:hover:not(:disabled) {
-  background: #4a4a82;
-}
-.btnPrimary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.btnPrimary:hover:not(:disabled) { background: #52529a; }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 .hint {
   color: #8c8c9a;
   font-size: 13px;

@@ -650,13 +650,17 @@ onMounted(async () => {
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
 .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 14px; }
+.tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; cursor: pointer; font-size: 14px; }
+.tab:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .tab.active { background: #5c5c9e; color: #fff; border-color: #5c5c9e; }
 .toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
 .searchInput { min-width: 240px; flex: 1; max-width: 360px; }
-.input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; }
+.input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; outline: none; }
+.input:focus { border-color: #5c5c9e; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
-.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
+.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnGhost:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
@@ -688,7 +692,9 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 .btnPrimarySm { padding: 6px 12px; border-radius: 6px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; font-size: 13px; flex-shrink: 0; white-space: nowrap; }
-.btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 13px; flex-shrink: 0; white-space: nowrap; }
+.btnPrimarySm:hover { background: #52529a; }
+.btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; cursor: pointer; font-size: 13px; flex-shrink: 0; white-space: nowrap; }
+.btnGhostSm:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .badge { font-size: 12px; color: #5c5c9e; background: #f0f0ff; padding: 4px 8px; border-radius: 4px; flex-shrink: 0; white-space: nowrap; }
 .loading, .empty, .error { font-size: 14px; color: #8c8c9a; padding: 12px 0; }
 .error { color: #e05c5c; }

@@ -328,7 +328,9 @@ onMounted(async () => {
 .toolbar { display: flex; gap: 12px; margin-bottom: 16px; }
 .input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
-.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
+.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnGhost:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f3; text-align: left; }

@@ -463,6 +463,7 @@ onMounted(async () => {
 .toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .input { padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; min-width: 180px; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
 .panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 960px; }
 .table th, .table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f3; text-align: left; }
@@ -472,12 +473,14 @@ onMounted(async () => {
 .statusTag.active { background: #e6f7ef; color: #389e6d; }
 .statusTag.inactive { background: #f5f5f5; color: #8c8c9a; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; font-size: 13px; }
+.btnGhostSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; cursor: pointer; font-size: 13px; }
+.btnGhostSm:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .btnDangerSm { padding: 6px 12px; border-radius: 6px; border: 1px solid #ffa39e; background: #fff1f0; color: #cf1322; cursor: pointer; font-size: 13px; }
 .loading, .empty, .error { font-size: 14px; color: #8c8c9a; padding: 12px 0; }
 .error { color: #e05c5c; }
 .pager { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 14px; }
-.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
+.btnGhost { padding: 8px 14px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnGhost:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal { width: 480px; max-width: calc(100vw - 32px); background: #fff; border-radius: 12px; overflow: hidden; }
 .modalWide { width: 560px; }

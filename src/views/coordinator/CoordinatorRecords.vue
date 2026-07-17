@@ -122,4 +122,5 @@ onMounted(() => load(1))
 }
 .sep { color: #8c8c9a; font-size: 13px; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
 </style>

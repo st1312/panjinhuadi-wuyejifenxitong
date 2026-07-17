@@ -321,6 +321,7 @@ onMounted(reloadAll)
 .label { display: block; font-size: 13px; color: #5c5c66; margin-bottom: 8px; }
 .input, .select { width: 100%; padding: 10px 12px; border: 1px solid #e8e8ec; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
 .success { color: #3aaf7d; font-size: 13px; margin-bottom: 12px; }
 .error { color: #e05c5c; font-size: 13px; margin-bottom: 12px; }
 .balanceBox { margin-bottom: 16px; padding: 14px 16px; background: #f7f7fb; border-radius: 8px; }

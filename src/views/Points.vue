@@ -689,6 +689,7 @@ const segments = computed(() => {
   font-size: 14px;
   cursor: pointer;
 }
+.btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .btnPrimary {
   padding: 10px 18px;
   border-radius: 8px;

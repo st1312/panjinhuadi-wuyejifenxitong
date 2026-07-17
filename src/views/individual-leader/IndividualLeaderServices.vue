@@ -414,7 +414,9 @@ onMounted(load)
 .title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin-bottom: 8px; }
 .desc { font-size: 14px; color: #8c8c9a; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
-.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #fff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .panel { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow-x: auto; }
 .loading, .empty, .error { text-align: center; padding: 32px 0; color: #8c8c9a; font-size: 14px; }
 .error { color: #e05c5c; }
@@ -465,7 +467,8 @@ onMounted(load)
 .fieldRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .label { display: block; font-size: 13px; color: #5c5c66; margin-bottom: 8px; }
 .required { color: #e05c5c; }
-.input, .textarea { width: 100%; padding: 10px 12px; border: 1px solid #e8e8ec; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+.input, .textarea { width: 100%; padding: 10px 12px; border: 1px solid #e8e8ec; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none; }
+.input:focus, .textarea:focus { border-color: #5c5c9e; }
 .textarea { resize: vertical; font-family: inherit; }
 .coverPreviewList { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .coverThumb { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid #f0f0f3; }

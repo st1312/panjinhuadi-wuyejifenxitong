@@ -336,7 +336,9 @@ onMounted(() => {
 .error { font-size: 13px; color: #e05c5c; margin-bottom: 12px; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
 .btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @media (max-width: 900px) {

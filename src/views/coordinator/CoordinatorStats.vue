@@ -147,6 +147,7 @@ onMounted(load)
 }
 .sep { color: #8c8c9a; font-size: 13px; }
 .btnPrimary { padding: 10px 18px; border-radius: 8px; background: #5c5c9e; color: #fff; border: none; cursor: pointer; }
+.btnPrimary:hover { background: #52529a; }
 .loading, .error, .empty { font-size: 14px; color: #8c8c9a; }
 .error { color: #e05c5c; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
