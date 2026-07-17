@@ -7,7 +7,6 @@
       </div>
       <div class="headerActions">
         <button type="button" class="btnSecondary" @click="openSettings">参数设置</button>
-        <button type="button" class="btnSecondary" @click="openDistributor">上架一级货源</button>
       </div>
     </div>
 
@@ -194,56 +193,6 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div v-if="distributorOpen" class="modalOverlay" @click.self="distributorOpen = false">
-        <div class="modal">
-          <div class="modalHeader">
-            <h3 class="modalTitle">上架一级经销商品</h3>
-            <button type="button" class="modalClose" @click="distributorOpen = false">&times;</button>
-          </div>
-          <div class="modalBody">
-            <div class="field">
-              <label class="label">商品名称</label>
-              <input v-model="distributorForm.name" class="input" />
-            </div>
-            <div class="field">
-              <label class="label">封面 URL</label>
-              <input v-model="distributorForm.coverUrl" class="input" />
-            </div>
-            <div class="fieldRow">
-              <div class="field">
-                <label class="label">进货价</label>
-                <input v-model.number="distributorForm.wholesalePrice" type="number" min="0" class="input" />
-              </div>
-              <div class="field">
-                <label class="label">建议零售价</label>
-                <input
-                  v-model.number="distributorForm.suggestedRetailPrice"
-                  type="number"
-                  min="0"
-                  class="input"
-                />
-              </div>
-            </div>
-            <div class="field">
-              <label class="label">库存</label>
-              <input v-model.number="distributorForm.stock" type="number" min="0" class="input" />
-            </div>
-            <div class="field">
-              <label class="label">描述</label>
-              <textarea v-model="distributorForm.description" class="textarea" rows="3" />
-            </div>
-            <p v-if="distributorError" class="error">{{ distributorError }}</p>
-            <div class="modalFooter">
-              <button type="button" class="btnSecondary" @click="distributorOpen = false">取消</button>
-              <button type="button" class="btnPrimary" :disabled="distributorSaving" @click="submitDistributor">
-                {{ distributorSaving ? '提交中...' : '上架' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -287,18 +236,6 @@ const settings = ref<ResidentMerchantSettings>({
   defaultDepositAmount: 500,
   platformCommissionRate: 0,
   refundWindowDays: 7
-})
-
-const distributorOpen = ref(false)
-const distributorSaving = ref(false)
-const distributorError = ref('')
-const distributorForm = ref({
-  name: '',
-  coverUrl: '',
-  wholesalePrice: 0,
-  suggestedRetailPrice: 0,
-  stock: 0,
-  description: ''
 })
 
 function resolveError(e: unknown) {
@@ -407,43 +344,6 @@ async function saveSettings() {
   }
 }
 
-function openDistributor() {
-  distributorForm.value = {
-    name: '',
-    coverUrl: '',
-    wholesalePrice: 0,
-    suggestedRetailPrice: 0,
-    stock: 0,
-    description: ''
-  }
-  distributorError.value = ''
-  distributorOpen.value = true
-}
-
-async function submitDistributor() {
-  if (!distributorForm.value.name.trim()) {
-    distributorError.value = '请填写商品名称'
-    return
-  }
-  distributorSaving.value = true
-  distributorError.value = ''
-  try {
-    await residentMerchantAdminApi.createDistributorProduct({
-      name: distributorForm.value.name.trim(),
-      coverUrl: distributorForm.value.coverUrl.trim() || undefined,
-      wholesalePrice: distributorForm.value.wholesalePrice,
-      suggestedRetailPrice: distributorForm.value.suggestedRetailPrice,
-      stock: distributorForm.value.stock,
-      description: distributorForm.value.description.trim() || undefined
-    })
-    distributorOpen.value = false
-  } catch (e) {
-    distributorError.value = resolveError(e)
-  } finally {
-    distributorSaving.value = false
-  }
-}
-
 onMounted(loadCurrent)
 </script>
 
@@ -481,9 +381,7 @@ onMounted(loadCurrent)
 .modalClose:hover { color: #1f1f2e; }
 .modalBody { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px; }
-.field, .fieldRow { display: flex; flex-direction: column; gap: 8px; }
-.fieldRow { flex-direction: row; gap: 12px; }
-.fieldRow .field { flex: 1; }
+.field { display: flex; flex-direction: column; gap: 8px; }
 .label { font-size: 13px; font-weight: 500; color: #5c5c66; }
 .input, .textarea { width: 100%; border: 1px solid #e8e8ec; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #1f1f2e; background: #ffffff; outline: none; box-sizing: border-box; font-family: inherit; }
 .input:focus, .textarea:focus { border-color: #5c5c9e; }
