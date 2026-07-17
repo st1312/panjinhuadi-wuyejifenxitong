@@ -1308,11 +1308,12 @@ export const merchantAdAdminApi = {
     )
   },
 
-  addQuota(merchantId: string, weeklyQuota: number, remark?: string) {
-    return request<{ merchantId: string; weeklyQuota: number }>(
-      `/admin/merchants/${merchantId}/ad-quota`,
-      { method: 'POST', body: JSON.stringify({ weeklyQuota, remark }) }
-    )
+  /** §59.5 为商家增加本周付费广告额度 */
+  addQuota(merchantId: string, purchasedQuota: number) {
+    return request<MerchantAdQuota>(`/admin/merchants/${merchantId}/ad-quota`, {
+      method: 'POST',
+      body: JSON.stringify({ purchasedQuota })
+    })
   }
 }
 

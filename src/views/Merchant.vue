@@ -206,6 +206,14 @@
                     <IconSvg name="edit" />
                   </button>
                   <button
+                    v-if="canManageAdQuota"
+                    class="actionBtn adQuota"
+                    title="广告额度"
+                    @click="openAdQuotaModal(merchant.id, merchant.name)"
+                  >
+                    <IconSvg name="retail" />
+                  </button>
+                  <button
                     v-if="canKick && merchant.status !== MERCHANT_STATUS.KICKED"
                     class="actionBtn kick"
                     title="踢出"
@@ -493,14 +501,65 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div v-if="adQuotaModalOpen" class="modalOverlay" @click.self="closeAdQuotaModal">
+        <div class="modal modalScroll">
+          <div class="modalHeader">
+            <h3 class="modalTitle">增加广告额度</h3>
+            <button class="modalClose" @click="closeAdQuotaModal">&times;</button>
+          </div>
+          <form class="modalBody" @submit.prevent="submitAdQuota">
+            <p class="kickHint">为「{{ adQuotaTargetName }}」增加本周付费广告条数。</p>
+            <div class="field">
+              <label class="label">增加付费条数 <span class="required">*</span></label>
+              <input
+                v-model.number="adQuotaPurchased"
+                type="number"
+                class="input"
+                min="1"
+                step="1"
+                required
+                placeholder="请输入正整数"
+              />
+            </div>
+            <div v-if="adQuotaResult" class="adQuotaResult">
+              <div class="adQuotaResultTitle">额度已更新</div>
+              <div class="adQuotaResultRow">
+                <span>周期</span>
+                <strong>{{ adQuotaResult.weekStart || '—' }} ~ {{ adQuotaResult.weekEnd || '—' }}</strong>
+              </div>
+              <div class="adQuotaResultRow">
+                <span>免费 / 已购</span>
+                <strong>{{ adQuotaResult.freeQuota ?? 1 }} / {{ adQuotaResult.purchasedQuota ?? 0 }}</strong>
+              </div>
+              <div class="adQuotaResultRow">
+                <span>已用 / 剩余</span>
+                <strong>{{ adQuotaResult.usedCount ?? 0 }} / {{ adQuotaResult.remainingCount ?? 0 }}</strong>
+              </div>
+            </div>
+            <p v-if="formError" class="error">{{ formError }}</p>
+            <div class="modalFooter">
+              <button type="button" class="btnSecondary" @click="closeAdQuotaModal">
+                {{ adQuotaResult ? '关闭' : '取消' }}
+              </button>
+              <button v-if="!adQuotaResult" type="submit" class="btnPrimary" :disabled="formSubmitting">
+                {{ formSubmitting ? '提交中...' : '确认增加' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import IconSvg from '../components/IconSvg.vue'
 import SegmentedControl from '../components/SegmentedControl.vue'
-import { merchantApi, propertyCompanyApi } from '../api/services'
+import { merchantApi, merchantAdAdminApi, propertyCompanyApi } from '../api/services'
 import type {
+  MerchantAdQuota,
   MerchantItem,
   MerchantUpdatePayload,
   PlatformMerchantCreatePayload,
@@ -539,6 +598,9 @@ type ViewMode = 'property' | 'platform'
 const viewMode = ref<ViewMode>('property')
 const isPlatformAdmin = computed(() => auth.profile?.role === USER_ROLE.PLATFORM_ADMIN)
 const canKick = computed(
+  () => auth.profile?.role === USER_ROLE.PROPERTY_ADMIN || auth.profile?.role === USER_ROLE.PLATFORM_ADMIN
+)
+const canManageAdQuota = computed(
   () => auth.profile?.role === USER_ROLE.PROPERTY_ADMIN || auth.profile?.role === USER_ROLE.PLATFORM_ADMIN
 )
 const viewTabs = [
@@ -605,6 +667,12 @@ const kickForm = ref({
   reason: '',
   notifyMerchant: true
 })
+
+const adQuotaModalOpen = ref(false)
+const adQuotaTargetId = ref('')
+const adQuotaTargetName = ref('')
+const adQuotaPurchased = ref<number | ''>(1)
+const adQuotaResult = ref<MerchantAdQuota | null>(null)
 
 const editForm = ref({
   name: '',
@@ -1166,6 +1234,42 @@ async function submitKick() {
   }
 }
 
+function openAdQuotaModal(id: string, name: string) {
+  resetFormError()
+  adQuotaTargetId.value = id
+  adQuotaTargetName.value = name
+  adQuotaPurchased.value = 1
+  adQuotaResult.value = null
+  adQuotaModalOpen.value = true
+}
+
+function closeAdQuotaModal() {
+  adQuotaModalOpen.value = false
+  adQuotaTargetId.value = ''
+  adQuotaTargetName.value = ''
+  adQuotaPurchased.value = 1
+  adQuotaResult.value = null
+  resetFormError()
+}
+
+async function submitAdQuota() {
+  if (!adQuotaTargetId.value) return
+  const amount = Number(adQuotaPurchased.value)
+  if (!Number.isInteger(amount) || amount < 1) {
+    formError.value = '请输入不小于 1 的整数'
+    return
+  }
+  resetFormError()
+  formSubmitting.value = true
+  try {
+    adQuotaResult.value = await merchantAdAdminApi.addQuota(adQuotaTargetId.value, amount)
+  } catch (e) {
+    formError.value = resolveErrorMessage(e)
+  } finally {
+    formSubmitting.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     await loadPropertyCompanies()
@@ -1263,7 +1367,26 @@ onMounted(async () => {
 .table .actionBtn svg { width: 14px; height: 14px; }
 .table .actionBtn.detail { border-color: #e8e8ec; color: #8c8c9a; }
 .table .actionBtn.edit { border-color: #5c5c9e; color: #5c5c9e; }
+.table .actionBtn.adQuota { border-color: #3aaf7d; color: #3aaf7d; }
 .table .actionBtn.kick { border-color: #e05c5c; color: #e05c5c; }
+.adQuotaResult {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f5f7ff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adQuotaResultTitle { font-size: 13px; font-weight: 600; color: #3aaf7d; }
+.adQuotaResultRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #5c5c66;
+}
+.adQuotaResultRow strong { color: #1f1f2e; font-weight: 600; }
 .table .footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 1px solid #f0f0f3; }
 .table .total { font-size: 13px; color: #8c8c9a; }
 .table .pagination { display: flex; align-items: center; gap: 8px; }
