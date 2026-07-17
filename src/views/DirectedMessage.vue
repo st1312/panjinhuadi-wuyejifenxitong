@@ -137,15 +137,9 @@
         </table>
         <p v-else class="hint">暂无推送任务</p>
         <div v-if="totalPages > 1" class="pager">
-          <button class="btnSecondary" :disabled="page <= 1" @click="loadTasks(page - 1)">上一页</button>
-          <span>{{ page }} / {{ totalPages }}</span>
-          <button
-            class="btnSecondary"
-            :disabled="page >= totalPages"
-            @click="loadTasks(page + 1)"
-          >
-            下一页
-          </button>
+          <button type="button" class="pageBtn" :disabled="page <= 1" @click="loadTasks(page - 1)">&lt;</button>
+          <span class="pageInfo">{{ page }} / {{ totalPages }}</span>
+          <button type="button" class="pageBtn" :disabled="page >= totalPages" @click="loadTasks(page + 1)">&gt;</button>
         </div>
       </div>
     </div>
@@ -464,212 +458,53 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-.title {
-  margin: 0;
-  font-size: 22px;
-}
-.desc {
-  margin: 6px 0 0;
-  color: #8c8c9a;
-  font-size: 13px;
-}
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 16px;
-}
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-.card,
-.ageCard {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #ececf2;
-}
-.cardHead {
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #5c5c9e;
-}
-.form,
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.form {
-  gap: 12px;
-}
-.label {
-  font-size: 13px;
-  color: #666;
-}
-.input,
-.textarea {
-  border: 1px solid #e8e8ec;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #1f1f2e;
-  background: #ffffff;
-  outline: none;
-}
-.input:focus,
-.textarea:focus { border-color: #5c5c9e; }
-.input.sm {
-  width: 140px;
-}
-.checkboxGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-}
-.checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-}
+.page { max-width: 1200px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+.title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin: 0 0 8px; }
+.desc { font-size: 14px; color: #8c8c9a; margin: 0; }
+.grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+.card, .ageCard { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.cardHead { font-size: 15px; font-weight: 500; color: #5c5c9e; margin-bottom: 20px; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.label { font-size: 14px; font-weight: 500; color: #5c5c66; }
+.input, .textarea { width: 100%; border: 1px solid #e8e8ec; border-radius: 8px; padding: 10px 14px; font-size: 14px; color: #1f1f2e; background: #fafafc; outline: none; box-sizing: border-box; font-family: inherit; }
+.input:focus, .textarea:focus { border-color: #5c5c9e; background: #ffffff; }
+.input.sm { width: 140px; }
+.checkboxGroup { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #5c5c66; cursor: pointer; }
 .checkbox input { accent-color: #5c5c9e; }
-.ageRow {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.table th,
-.table td {
-  border-bottom: 1px solid #f0f0f5;
-  padding: 8px 6px;
-  text-align: left;
-}
-.linkBtn {
-  border: none;
-  background: transparent;
-  color: #5c5c9e;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-.btnPrimary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: none;
-  background: #5c5c9e;
-  color: #ffffff;
-  font-size: 14px;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: background 0.2s;
-}
+.ageRow { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th, .table td { padding: 14px 16px; text-align: left; vertical-align: middle; border-bottom: 1px solid #f0f0f3; color: #1f1f2e; }
+.table th { color: #8c8c9a; font-weight: 500; background: #fafafc; }
+.table tbody tr:last-child td { border-bottom: none; }
+.linkBtn { border: none; background: none; color: #5c5c9e; padding: 0; cursor: pointer; font-size: 14px; }
+.btnPrimary { padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; align-self: flex-start; transition: background 0.2s; }
 .btnPrimary:hover { background: #52529a; }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btnSecondary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: 1px solid #e8e8ec;
-  background: #ffffff;
-  color: #5c5c66;
-  font-size: 14px;
-  cursor: pointer;
-}
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .btnSecondary:hover:not(:disabled) { border-color: #5c5c9e; color: #5c5c9e; }
 .btnSecondary:disabled { opacity: 0.6; cursor: not-allowed; }
-.error {
-  color: #d14343;
-  font-size: 13px;
-}
-.success {
-  color: #1f8a4c;
-  font-size: 13px;
-}
-.hint {
-  color: #8c8c9a;
-  font-size: 13px;
-}
-.pager {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-}
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-.modal {
-  background: #fff;
-  border-radius: 12px;
-  width: min(720px, 100%);
-  max-height: 90vh;
-  overflow: auto;
-}
-.modalWide {
-  width: min(920px, 100%);
-}
-.modalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid #eee;
-}
-.modalTitle {
-  margin: 0;
-  font-size: 16px;
-}
-.modalClose {
-  border: none;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-}
-.modalBody {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.detailGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  font-size: 13px;
-}
-.contentBlock {
-  white-space: pre-wrap;
-  background: #f7f8fb;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-.filtersRow {
-  display: flex;
-  gap: 8px;
-}
+.error { color: #e05c5c; font-size: 14px; }
+.success { color: #3aaf7d; font-size: 14px; }
+.hint { color: #8c8c9a; font-size: 14px; }
+.pager { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.pageBtn { padding: 6px 12px; border: 1px solid #e8e8ec; border-radius: 8px; background: #fff; color: #5c5c66; font-size: 14px; cursor: pointer; }
+.pageBtn:hover:not(:disabled) { border-color: #5c5c9e; color: #5c5c9e; }
+.pageBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pageInfo { font-size: 14px; color: #8c8c9a; min-width: 48px; text-align: center; }
+.modalOverlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal { background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); width: min(720px, 100%); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; }
+.modalWide { width: min(920px, 100%); }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f0f0f3; flex-shrink: 0; }
+.modalTitle { font-size: 16px; font-weight: 600; color: #1f1f2e; margin: 0; }
+.modalClose { width: 32px; height: 32px; border: none; background: transparent; font-size: 24px; line-height: 1; color: #8c8c9a; cursor: pointer; }
+.modalClose:hover { color: #1f1f2e; }
+.modalBody { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.detailGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; font-size: 14px; color: #1f1f2e; }
+.detailGrid .label { font-size: 12px; color: #8c8c9a; font-weight: 400; display: block; margin-bottom: 4px; }
+.contentBlock { white-space: pre-wrap; background: #fafafc; padding: 14px 16px; border-radius: 8px; font-size: 14px; color: #1f1f2e; line-height: 1.6; }
+.filtersRow { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>

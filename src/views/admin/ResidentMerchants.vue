@@ -448,180 +448,44 @@ onMounted(loadCurrent)
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-.headerActions {
-  display: flex;
-  gap: 8px;
-}
-.title {
-  margin: 0;
-  font-size: 22px;
-}
-.desc {
-  margin: 6px 0 0;
-  color: #8c8c9a;
-  font-size: 13px;
-}
-.tabs {
-  display: flex;
-  gap: 8px;
-}
-.tab {
-  border: 1px solid #e8e8ec;
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 10px 18px;
-  color: #5c5c66;
-  font-size: 14px;
-  cursor: pointer;
-}
+.page { max-width: 1200px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+.headerActions { display: flex; gap: 8px; flex-wrap: wrap; }
+.title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin: 0 0 8px; }
+.desc { font-size: 14px; color: #8c8c9a; margin: 0; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab { border: 1px solid #e8e8ec; background: #ffffff; border-radius: 8px; padding: 10px 18px; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .tab:hover { border-color: #5c5c9e; color: #5c5c9e; }
-.tab.active {
-  background: #5c5c9e;
-  border-color: #5c5c9e;
-  color: #ffffff;
-}
-.panel {
-  background: #fff;
-  border: 1px solid #ececf2;
-  border-radius: 12px;
-  padding: 16px;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.table th,
-.table td {
-  border-bottom: 1px solid #f0f0f5;
-  padding: 10px 6px;
-  text-align: left;
-}
-.actions {
-  display: flex;
-  gap: 10px;
-}
-.linkBtn {
-  border: none;
-  background: transparent;
-  color: #5c5c9e;
-  cursor: pointer;
-  padding: 0;
-  font: inherit;
-}
-.linkBtn.danger {
-  color: #e05c5c;
-}
-.btnPrimary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: none;
-  background: #5c5c9e;
-  color: #ffffff;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
+.tab.active { background: #5c5c9e; border-color: #5c5c9e; color: #ffffff; }
+.panel { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 800px; }
+.table th, .table td { padding: 14px 24px; text-align: left; vertical-align: middle; border-bottom: 1px solid #f0f0f3; }
+.table th { color: #8c8c9a; font-weight: 500; background: #fafafc; }
+.table tbody td { color: #1f1f2e; }
+.table tbody tr:last-child td { border-bottom: none; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.linkBtn { border: none; background: none; color: #5c5c9e; cursor: pointer; padding: 0; font-size: 14px; }
+.linkBtn.danger { color: #e05c5c; }
+.btnPrimary { padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; transition: background 0.2s; }
 .btnPrimary:hover { background: #52529a; }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btnSecondary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: 1px solid #e8e8ec;
-  background: #ffffff;
-  color: #5c5c66;
-  font-size: 14px;
-  cursor: pointer;
-}
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
-.hint {
-  color: #8c8c9a;
-}
-.error {
-  color: #d14343;
-  font-size: 13px;
-}
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-.modal {
-  background: #fff;
-  border-radius: 12px;
-  width: min(520px, 100%);
-  max-height: 90vh;
-  overflow: auto;
-}
-.modalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid #eee;
-}
-.modalTitle {
-  margin: 0;
-}
-.modalClose {
-  border: none;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-}
-.modalBody {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.modalFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.field,
-.fieldRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.fieldRow {
-  flex-direction: row;
-  gap: 12px;
-}
-.fieldRow .field {
-  flex: 1;
-}
-.label {
-  font-size: 13px;
-  color: #666;
-}
-.input,
-.textarea {
-  border: 1px solid #e8e8ec;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #1f1f2e;
-  background: #ffffff;
-  outline: none;
-}
-.input:focus,
-.textarea:focus { border-color: #5c5c9e; }
+.hint { color: #8c8c9a; font-size: 14px; padding: 24px; margin: 0; }
+.error { color: #e05c5c; font-size: 14px; padding: 24px; margin: 0; }
+.modalOverlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal { width: min(520px, 100%); max-height: 90vh; background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: auto; display: flex; flex-direction: column; }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f0f0f3; flex-shrink: 0; }
+.modalTitle { font-size: 16px; font-weight: 600; color: #1f1f2e; margin: 0; }
+.modalClose { width: 32px; height: 32px; border: none; background: transparent; font-size: 24px; line-height: 1; color: #8c8c9a; cursor: pointer; }
+.modalClose:hover { color: #1f1f2e; }
+.modalBody { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.modalFooter { display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px; }
+.field, .fieldRow { display: flex; flex-direction: column; gap: 8px; }
+.fieldRow { flex-direction: row; gap: 12px; }
+.fieldRow .field { flex: 1; }
+.label { font-size: 13px; font-weight: 500; color: #5c5c66; }
+.input, .textarea { width: 100%; border: 1px solid #e8e8ec; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #1f1f2e; background: #ffffff; outline: none; box-sizing: border-box; font-family: inherit; }
+.input:focus, .textarea:focus { border-color: #5c5c9e; }
+.textarea { resize: vertical; min-height: 80px; }
 </style>

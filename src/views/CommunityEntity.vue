@@ -361,176 +361,41 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-.title {
-  margin: 0;
-  font-size: 22px;
-}
-.desc {
-  margin: 6px 0 0;
-  color: #8c8c9a;
-  font-size: 13px;
-}
-.panel,
-.modal {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #ececf2;
-}
-.panel {
-  padding: 16px;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.table th,
-.table td {
-  border-bottom: 1px solid #f0f0f5;
-  padding: 10px 6px;
-  text-align: left;
-}
-.name {
-  font-weight: 600;
-}
-.sub {
-  color: #8c8c9a;
-  font-size: 12px;
-}
-.hint {
-  color: #8c8c9a;
-  font-size: 13px;
-}
-.error {
-  color: #d14343;
-  font-size: 13px;
-}
-.linkBtn {
-  border: none;
-  background: transparent;
-  color: #5c5c9e;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-.btnPrimary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: none;
-  background: #5c5c9e;
-  color: #ffffff;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
+.page { max-width: 1200px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+.title { font-size: 24px; font-weight: 600; color: #1f1f2e; margin: 0 0 8px; }
+.desc { font-size: 14px; color: #8c8c9a; margin: 0; }
+.panel { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px; }
+.table th, .table td { padding: 14px 24px; text-align: left; vertical-align: middle; border-bottom: 1px solid #f0f0f3; }
+.table th { color: #8c8c9a; font-weight: 500; background: #fafafc; }
+.table tbody td { color: #1f1f2e; }
+.table tbody tr:last-child td { border-bottom: none; }
+.name { font-weight: 600; color: #1f1f2e; }
+.sub { color: #8c8c9a; font-size: 12px; margin-top: 2px; }
+.hint { color: #8c8c9a; font-size: 14px; padding: 24px; margin: 0; }
+.error { color: #e05c5c; font-size: 14px; padding: 24px; margin: 0; }
+.linkBtn { border: none; background: none; color: #5c5c9e; padding: 0; cursor: pointer; font-size: 14px; }
+.btnPrimary { padding: 10px 18px; border-radius: 8px; border: none; background: #5c5c9e; color: #ffffff; font-size: 14px; cursor: pointer; transition: background 0.2s; }
 .btnPrimary:hover { background: #52529a; }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btnSecondary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  border: 1px solid #e8e8ec;
-  background: #ffffff;
-  color: #5c5c66;
-  font-size: 14px;
-  cursor: pointer;
-}
+.btnSecondary { padding: 10px 18px; border-radius: 8px; border: 1px solid #e8e8ec; background: #ffffff; color: #5c5c66; font-size: 14px; cursor: pointer; }
 .btnSecondary:hover { border-color: #5c5c9e; color: #5c5c9e; }
-.dangerBtn {
-  border: none;
-  background: transparent;
-  color: #e05c5c;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-.modal {
-  width: min(520px, 100%);
-  max-height: 90vh;
-  overflow: auto;
-}
-.modalWide {
-  width: min(860px, 100%);
-}
-.modalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid #eee;
-}
-.modalTitle {
-  margin: 0;
-  font-size: 16px;
-}
-.modalClose {
-  border: none;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-}
-.modalBody {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.modalFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.label {
-  font-size: 13px;
-  color: #666;
-}
-.fieldHint {
-  margin: 0;
-  font-size: 12px;
-  color: #8c8c9a;
-}
-.input,
-.textarea {
-  border: 1px solid #e8e8ec;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #1f1f2e;
-  background: #ffffff;
-  outline: none;
-}
-.input:focus,
-.textarea:focus { border-color: #5c5c9e; }
-.input.sm {
-  width: 120px;
-}
-.bindForm {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.dangerBtn { border: none; background: none; color: #e05c5c; padding: 0; cursor: pointer; font-size: 14px; }
+.modalOverlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal { width: min(520px, 100%); max-height: 90vh; background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: auto; display: flex; flex-direction: column; }
+.modalWide { width: min(860px, 100%); }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f0f0f3; flex-shrink: 0; }
+.modalTitle { font-size: 16px; font-weight: 600; color: #1f1f2e; margin: 0; }
+.modalClose { width: 32px; height: 32px; border: none; background: transparent; font-size: 24px; line-height: 1; color: #8c8c9a; cursor: pointer; }
+.modalClose:hover { color: #1f1f2e; }
+.modalBody { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.modalFooter { display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.label { font-size: 13px; font-weight: 500; color: #5c5c66; }
+.fieldHint { margin: 0; font-size: 12px; color: #8c8c9a; }
+.input, .textarea { width: 100%; border: 1px solid #e8e8ec; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #1f1f2e; background: #ffffff; outline: none; box-sizing: border-box; font-family: inherit; }
+.input:focus, .textarea:focus { border-color: #5c5c9e; }
+.input.sm { width: 120px; }
+.bindForm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 </style>
