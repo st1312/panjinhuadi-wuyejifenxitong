@@ -1252,9 +1252,18 @@ export const residentMerchantAdminApi = {
   },
 
   auditApplication(id: string, auditResult: string, reason?: string) {
+    // 兼容新旧后端：旧 DTO 要求 auditStatus，新 DTO 使用 auditResult；备注字段同理
     return request<ResidentMerchantApplicationItem>(
       `/admin/resident-merchant-applications/${id}/audit`,
-      { method: 'POST', body: JSON.stringify({ auditResult, reason }) }
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          auditStatus: auditResult,
+          auditResult,
+          reason,
+          auditRemark: reason
+        })
+      }
     )
   },
 

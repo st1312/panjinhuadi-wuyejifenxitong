@@ -42,6 +42,8 @@ import { ApiError } from '../api/request'
 const props = defineProps<{
   modelValue: string
   status?: string
+  /** 挂载后自动加载并展开下拉（用于表单弹窗） */
+  autoOpen?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -116,7 +118,13 @@ watch(() => props.modelValue, (id) => {
   if (!id) keyword.value = ''
 })
 
-onMounted(() => document.addEventListener('click', onClickOutside))
+onMounted(() => {
+  document.addEventListener('click', onClickOutside)
+  if (props.autoOpen) {
+    open.value = true
+    fetchResidents()
+  }
+})
 onUnmounted(() => {
   document.removeEventListener('click', onClickOutside)
   clearTimeout(debounceTimer)

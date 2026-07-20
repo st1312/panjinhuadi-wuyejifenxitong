@@ -119,41 +119,31 @@
 
             <template v-if="!editingId">
               <div class="field">
-                <label class="label">搜索住户 <em>*</em></label>
-                <div class="fieldRow">
-                  <input v-model="residentKeyword" class="input" placeholder="姓名或手机号" @keyup.enter="searchResidents" />
-                  <button type="button" class="btnGhost" :disabled="residentSearching" @click="searchResidents">
-                    {{ residentSearching ? '搜索中...' : '搜索' }}
-                  </button>
-                </div>
-              </div>
-              <div class="field">
                 <label class="label">选择业主 <em>*</em></label>
-                <select v-model="form.residentId" class="input">
-                  <option value="">请选择业主</option>
-                  <option v-for="r in residentOptions" :key="r.id" :value="r.id">
-                    {{ r.name || r.id }} · {{ r.phone || '无手机号' }}
-                  </option>
-                </select>
+                <ResidentSearchSelect
+                  v-model="form.residentId"
+                  :status="RESIDENT_STATUS.ACTIVE"
+                  auto-open
+                />
               </div>
               <div class="field">
                 <label class="label">统筹负责人 <em>*</em></label>
-                <select v-model="form.coordinatorId" class="input">
-                  <option value="">请选择统筹负责人</option>
+                <select v-model="form.coordinatorId" class="input" :disabled="coordinatorLoading">
+                  <option value="">
+                    {{ coordinatorLoading ? '加载统筹负责人中...' : '请选择统筹负责人' }}
+                  </option>
                   <option v-for="c in coordinatorOptions" :key="c.id" :value="c.id">{{ c.name }}</option>
                 </select>
-                <input
-                  v-if="!coordinatorOptions.length"
-                  v-model="form.coordinatorId"
-                  class="input mt8"
-                  placeholder="统筹负责人 ID（coo_xxx）"
-                />
+                <p v-if="coordinatorLoadError" class="fieldHint error">{{ coordinatorLoadError }}</p>
+                <p v-else-if="!coordinatorLoading && !coordinatorOptions.length" class="fieldHint error">
+                  暂无可选统筹负责人
+                </p>
               </div>
             </template>
 
             <div v-else class="field">
               <label class="label">统筹负责人</label>
-              <select v-model="form.coordinatorId" class="input">
+              <select v-model="form.coordinatorId" class="input" :disabled="coordinatorLoading">
                 <option value="">不修改</option>
                 <option v-for="c in coordinatorOptions" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
@@ -197,13 +187,15 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { distributionApi, residentApi, sectorLeaderAdminApi } from '../api/services'
-import type { ResidentItem, SectorLeaderDetail } from '../api/types'
+import ResidentSearchSelect from '../components/ResidentSearchSelect.vue'
+import { distributionApi, sectorLeaderAdminApi } from '../api/services'
+import type { SectorLeaderDetail } from '../api/types'
 import { ApiError } from '../api/request'
 import {
   ENTITY_STATUS,
   ENTITY_STATUS_OPTIONS,
   getEnumLabel,
+  RESIDENT_STATUS,
   SECTOR_TYPE,
   SECTOR_TYPE_LABEL,
   SECTOR_TYPE_OPTIONS
@@ -229,9 +221,8 @@ const editingId = ref('')
 const submitting = ref(false)
 const formError = ref('')
 
-const residentKeyword = ref('')
-const residentSearching = ref(false)
-const residentOptions = ref<ResidentItem[]>([])
+const coordinatorLoading = ref(false)
+const coordinatorLoadError = ref('')
 const coordinatorOptions = ref<Array<{ id: string; name: string }>>([])
 
 const statusOptions = ENTITY_STATUS_OPTIONS
@@ -259,6 +250,8 @@ function formatMoney(value?: number) {
 }
 
 async function loadCoordinatorOptions() {
+  coordinatorLoading.value = true
+  coordinatorLoadError.value = ''
   const map = new Map<string, string>()
   try {
     const res = await sectorLeaderAdminApi.list({ page: 1, pageSize: 100, sort: '-createdAt' })
@@ -268,7 +261,7 @@ async function loadCoordinatorOptions() {
       }
     }
   } catch {
-    /* ignore */
+    /* ignore, try next source */
   }
   try {
     const stats = await distributionApi.stats()
@@ -277,10 +270,13 @@ async function loadCoordinatorOptions() {
         map.set(item.coordinatorId, item.name || item.coordinatorId)
       }
     }
-  } catch {
-    /* ignore */
+  } catch (e) {
+    if (!map.size) {
+      coordinatorLoadError.value = e instanceof ApiError ? e.message : '统筹负责人加载失败'
+    }
   }
   coordinatorOptions.value = Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+  coordinatorLoading.value = false
 }
 
 async function load(pageNo = 1) {
@@ -312,23 +308,6 @@ function changePage(next: number) {
   load(next)
 }
 
-async function searchResidents() {
-  const q = residentKeyword.value.trim()
-  if (!q) {
-    residentOptions.value = []
-    return
-  }
-  residentSearching.value = true
-  try {
-    const res = await residentApi.list({ page: 1, pageSize: 20, keyword: q })
-    residentOptions.value = res.list || []
-  } catch {
-    residentOptions.value = []
-  } finally {
-    residentSearching.value = false
-  }
-}
-
 function resetForm() {
   editingId.value = ''
   form.residentId = ''
@@ -336,14 +315,15 @@ function resetForm() {
   form.sector = SECTOR_TYPE.CLEANING
   form.description = ''
   form.status = ENTITY_STATUS.ACTIVE
-  residentKeyword.value = ''
-  residentOptions.value = []
   formError.value = ''
 }
 
 function openCreate() {
   resetForm()
   formOpen.value = true
+  if (!coordinatorOptions.value.length && !coordinatorLoading.value) {
+    loadCoordinatorOptions()
+  }
 }
 
 function openEdit(item: SectorLeaderDetail) {
@@ -355,6 +335,9 @@ function openEdit(item: SectorLeaderDetail) {
   form.status = item.status || ENTITY_STATUS.ACTIVE
   formError.value = ''
   formOpen.value = true
+  if (!coordinatorOptions.value.length && !coordinatorLoading.value) {
+    loadCoordinatorOptions()
+  }
 }
 
 function openEditFromDetail() {
@@ -394,8 +377,8 @@ async function submitForm() {
       formError.value = '请选择业主'
       return
     }
-    if (!form.coordinatorId.trim()) {
-      formError.value = '请选择或填写统筹负责人'
+    if (!form.coordinatorId) {
+      formError.value = '请选择统筹负责人'
       return
     }
   }
@@ -422,7 +405,7 @@ async function submitForm() {
     } else {
       await sectorLeaderAdminApi.create({
         residentId: form.residentId,
-        coordinatorId: form.coordinatorId.trim(),
+        coordinatorId: form.coordinatorId,
         sector: form.sector,
         description: form.description.trim() || undefined
       })
@@ -494,6 +477,8 @@ onMounted(async () => {
 .fieldRow .input { flex: 1; min-width: 0; }
 .label { display: block; font-size: 13px; color: #8c8c9a; margin-bottom: 6px; }
 .label em { color: #e05c5c; font-style: normal; }
+.fieldHint { margin: 6px 0 0; font-size: 12px; color: #8c8c9a; }
+.fieldHint.error { color: #e05c5c; }
 .textarea { width: 100%; padding: 8px 12px; border: 1px solid #e8e8ec; border-radius: 8px; resize: vertical; box-sizing: border-box; }
 .detailList { list-style: none; margin: 0; padding: 0; }
 .detailList li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #f0f0f3; font-size: 14px; }

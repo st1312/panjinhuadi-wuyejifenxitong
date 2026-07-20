@@ -73,8 +73,12 @@
           <div class="modalBody">
             <p v-if="formError" class="error">{{ formError }}</p>
             <div v-if="!editingId" class="field">
-              <label class="label">住户 ID（residentId）<em>*</em></label>
-              <input v-model="form.residentId" class="input" placeholder="关联住户的用户 ID" />
+              <label class="label">选择业主 <em>*</em></label>
+              <ResidentSearchSelect
+                v-model="form.residentId"
+                :status="RESIDENT_STATUS.ACTIVE"
+                auto-open
+              />
             </div>
             <div class="field">
               <label class="label">负责板块<em>*</em></label>
@@ -116,6 +120,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import ResidentSearchSelect from '../../components/ResidentSearchSelect.vue'
 import { coordinatorPortalApi, sectorLeaderAdminApi } from '../../api/services'
 import type { SectorLeaderDetail } from '../../api/types'
 import { ApiError } from '../../api/request'
@@ -123,6 +128,7 @@ import {
   ENTITY_STATUS,
   ENTITY_STATUS_OPTIONS,
   getEnumLabel,
+  RESIDENT_STATUS,
   SECTOR_TYPE,
   SECTOR_TYPE_LABEL,
   SECTOR_TYPE_OPTIONS
@@ -197,13 +203,17 @@ function changePage(next: number) {
   load(next)
 }
 
-function openCreate() {
+function resetForm() {
   editingId.value = ''
   form.residentId = ''
   form.sector = SECTOR_TYPE.CLEANING
   form.description = ''
   form.status = ENTITY_STATUS.ACTIVE
   formError.value = ''
+}
+
+function openCreate() {
+  resetForm()
   modalOpen.value = true
 }
 
@@ -223,8 +233,8 @@ function closeModal() {
 }
 
 async function submit() {
-  if (!editingId.value && !form.residentId.trim()) {
-    formError.value = '请填写住户 ID'
+  if (!editingId.value && !form.residentId) {
+    formError.value = '请选择业主'
     return
   }
   if (!coordinatorId.value && !editingId.value) {
@@ -242,7 +252,7 @@ async function submit() {
       })
     } else {
       await coordinatorPortalApi.createSectorLeader({
-        residentId: form.residentId.trim(),
+        residentId: form.residentId,
         coordinatorId: coordinatorId.value,
         sector: form.sector,
         description: form.description.trim() || undefined
